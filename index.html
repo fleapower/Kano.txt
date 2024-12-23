@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: Arial, sans-serif; }
+      .task { cursor: pointer; padding: 5px; border-bottom: 1px solid #ccc; }
+      .selected { background-color: #f0f0f0; }
+      .filter-bar { position: sticky; top: 0; background: white; padding: 10px; border-bottom: 1px solid #ccc; }
+      .tag-button {
+        background-color: gray;
+        color: white;
+        margin: 2px;
+      }
+      .tag-button.selected {
+        background-color: green;
+      }
+      .priority-a {
+        color: red;
+      }
+      .priority-b {
+        color: orange;
+      }
+      .priority-c {
+        color: green;
+      }
+      .priority-d {
+        color: blue;
+      }
+      .tag {
+        font-size: smaller;
+      }
+      .completed-task {
+        text-decoration: line-through;
+      }
+      .overdue-task {
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Task List</h1>
+    <div id="dialogContainer"></div>
+    <div class="filter-bar">
+      <input type="checkbox" id="dueToday" onclick="applyFilters()"> Due Today
+      <input type="text" id="searchBox" placeholder="Search..." oninput="applyFilters()">
+      <select id="priorityFilter" onchange="applyFilters()">
+        <option value="all">All</option>
+        <!-- Dynamically populated priorities -->
+      </select>
+      <button onclick="clearFilters()">Clear Filters</button>
+      <button onclick="sortTasksByDueDate()">Sort by Due Date</button>
+      <button onclick="saveTasks()">Save Tasks</button>
+    </div>
+    <div id="tagButtons" class="filter-bar"></div>
+    <div id="taskList"></div>
+    <script>
+      let allTasks = [];
+      let lastSelectedIndex = -1;
+      let selectedTasks = new Set();
+      let activeTags = new Set();
+
+      function loadTasks() {
+        google.script.run.withSuccessHandler(displayTasks).getTasks();
+      }
+
+      function displayTasks(tasks) {
+        allTasks = tasks;
+        populatePriorityFilter();
+        generateTagButtons();
+        applyFilters();
+      }
+
+      function populatePriorityFilter() {
+        const priorityFilter = document.getElementById('priorityFilter');
+        const priorities = new Set();
+        allTasks.forEach(task => {
+          const match = task.Task.match(/^\((.)\)/);
+          if (match) {
+            priorities.add(match[0]);
+          } else if (task.Task.startsWith('x')) {
+            priorities.add('x');
+          }
+        });
+        Array.from(priorities).sort().forEach(priority => {
+          const option = document.createElement('option');
+          option.value = priority;
+          option.textContent = priority;
+          priorityFilter.appendChild(option);
+        });
+      }
+
+      function generateTagButtons() {
+        const tagButtons = document.getElementById('tagButtons');
+        const tags = new Set();
+        allTasks.forEach(task => {
+          const match = task.Task.match(/ @\w+/g);
+          if (match) {
+            match.forEach(tag => tags.add(tag.trim()));
+          }
+        });
+        tagButtons.innerHTML = '';
+
+        // Add "No Tags" button
+        const noTagsButton = document.createElement('button');
+        noTagsButton.className = 'tag-button';
+        noTagsButton.textContent = 'No Tags';
+        noTagsButton.dataset.tag = 'No Tags';
+        noTagsButton.onclick = () => toggleTagFilter('No Tags');
+        tagButtons.appendChild(noTagsButton);
+
+        Array.from(tags).sort().forEach(tag => {
+          const button = document.createElement('button');
+          button.className = 'tag-button';
+          button.textContent = tag;
+          button.dataset.tag = tag;
+          button.onclick = () => toggleTagFilter(tag);
+          tagButtons.appendChild(button);
+        });
+      }
+
+      // Function to toggle tag filter and update button color
+      function toggleTagFilter(tag) {
+        const button = document.querySelector(`.tag-button[data-tag="${tag}"]`);
+        if (activeTags.has(tag)) {
+          activeTags.delete(tag);
+          button.classList.remove('selected');
+        } else {
+          activeTags.add(tag);
+          button.classList.add('selected');
+        }
+        applyFilters();
+      }
+
+      function applyFilters() {
+        const dueToday = document.getElementById('dueToday').checked;
+        const searchQuery = document.getElementById('searchBox').value.toLowerCase();
+        const priorityFilter = document.getElementById('priorityFilter').value;
+        const taskList = document.getElementById('taskList');
+        taskList.innerHTML = '';
+        const filteredTasks = allTasks.filter(task => {
+          const taskText = task.Task;
+          const dueDate = task.Task.substring(task.Task.indexOf('due:') + 4, task.Task.indexOf('due:') + 14);
+          const today = getTodayDate();
+          const matchesDueToday = !dueToday || (dueDate <= today);
+          const matchesSearch = taskText.toLowerCase().includes(searchQuery);
+          const matchesPriority = priorityFilter === 'all' || taskText.startsWith(priorityFilter);
+          const matchesTags = Array.from(activeTags).length === 0 || Array.from(activeTags).some(tag => {
+          if (tag === 'No Tags') {
+            return !taskText.match(/ @\w+/);
+          }
+              return taskText.includes(tag);
+            });
+            return matchesDueToday && matchesSearch && matchesPriority && matchesTags;
+        });
+
+        filteredTasks.forEach((task, index) => {
+          const div = document.createElement('div');
+          div.className = 'task';
+          div.dataset.taskId = task.TaskID;
+          div.dataset.index = index;
+          div.onclick = (event) => handleTaskClick(event, index);
+          // Format tags and color code priorities
+          let taskText = task.Task
+            .replace(/\(A\)/g, '<span class="priority-a">(A)</span>')
+            .replace(/\(B\)/g, '<span class="priority-b">(B)</span>')
+            .replace(/\(C\)/g, '<span class="priority-c">(C)</span>')
+            .replace(/\(D\)/g, '<span class="priority-d">(D)</span>')
+            .replace(/(@\S+)/g, '<span class="tag">$1</span>')
+            .replace(/(r:\S+)/g, '<span class="tag">$1</span>')
+            .replace(/(\+\S+)/g, '<span class="tag">$1</span>')
+            .replace(/(last:\S+)/g, '<span class="tag">$1</span>')
+            .replace(/(due:\S+)/g, '<span class="tag">$1</span>');
+
+          // Highlight overdue tasks in red
+          const dueDate = taskText.substring(taskText.indexOf('due:') + 4, taskText.indexOf('due:') + 14);
+          const today = getTodayDate();
+          if (dueDate < today) {
+            taskText = `<span class="overdue-task">${taskText}</span>`;
+          }
+
+          // Strike through completed tasks
+          if (task.Task.startsWith('x ')) {
+            taskText = `<span class="completed-task">${taskText}</span>`;
+          }
+
+          div.innerHTML = taskText;
+          taskList.appendChild(div);
+        });
+      }
+
+      function clearFilters() {
+        document.getElementById('dueToday').checked = false;
+        document.getElementById('searchBox').value = '';
+        document.getElementById('priorityFilter').value = 'all';
+        activeTags.clear();
+        applyFilters();
+      }
+
+      function sortTasksByDueDate() {
+        allTasks.sort((a, b) => {
+          const aDate = a.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
+          const bDate = b.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
+          return (aDate ? new Date(aDate[1]) : new Date(0)) - (bDate ? new Date(bDate[1]) : new Date(0));
+        });
+        applyFilters();
+      }
+
+      function copySelectedTasks() {
+        const taskList = document.getElementById('taskList');
+        const tasks = taskList.getElementsByClassName('task');
+        const selectedText = Array.from(selectedTasks)
+          .sort((a, b) => a - b)
+          .map(index => tasks[index].textContent)
+          .join('\n');
+        navigator.clipboard.writeText(selectedText).then(() => {
+          alert('Tasks copied to clipboard');
+        });
+      }
+
+      function saveFilterSet(number) {
+        const filterSet = {
+          dueToday: document.getElementById('dueToday').checked,
+          searchQuery: document.getElementById('searchBox').value,
+          priorityFilter: document.getElementById('priorityFilter').value,
+          activeTags: Array.from(activeTags)
+        };
+        google.script.run.saveFilterSet(number, filterSet);
+      }
+
+      function loadFilterSet(number) {
+        google.script.run.withSuccessHandler(applyLoadedFilterSet).loadFilterSet(number);
+      }
+
+      function applyLoadedFilterSet(filterSet) {
+        alert('loadfilterset');
+        /*
+        alert(filterSet.dueToday);
+        alert(filterSet.searchQuery.length);
+        alert(filterSet.priorityFilter);
+        */
+        document.getElementById('dueToday').checked = filterSet.dueToday;
+        document.getElementById('searchBox').value = filterSet.searchQuery;
+        document.getElementById('priorityFilter').value = filterSet.priorityFilter;
+        activeTags = new Set(filterSet.activeTags);
+        applyFilters();
+      }
+
+      function swapTasks(index1, index2) {
+        // Swap in the allTasks array
+        const tempTask = allTasks[index1];
+        allTasks[index1] = allTasks[index2];
+        allTasks[index2] = tempTask;
+
+        // Update the TaskID to reflect the new order
+        allTasks[index1].TaskID = index1;
+        allTasks[index2].TaskID = index2;
+
+        applyFilters();
+
+        // Deselect all tasks and select the original task
+        const taskList = document.getElementById('taskList');
+        const tasks = taskList.getElementsByClassName('task');
+        Array.from(tasks).forEach(task => task.classList.remove('selected'));
+        tasks[index2].classList.add('selected');
+        selectedTasks.clear();
+        selectedTasks.add(index1);
+        lastSelectedIndex = index1;
+      }
+
+
+      // Function to get today's date in user's local time zone in YYYY-MM-DD format
+      function getTodayDate() {
+        const today = new Date();
+        return today.toLocaleDateString('en-CA'); // 'en-CA' locale for YYYY-MM-DD format
+      }
+
+      // Function to get tomorrow's date in user's local time zone in YYYY-MM-DD format
+      function getTomorrowDate() {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow.toLocaleDateString('en-CA');
+      }
+
+      // Function to get the date for the next occurrence of a day of the week in user's local time zone
+      function getNextDayOfWeekDate(dayOfWeek) {
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const today = new Date();
+        const todayDayOfWeek = today.getDay();
+        const targetDayOfWeek = daysOfWeek.findIndex(day => day.toLowerCase() === dayOfWeek.toLowerCase());
+        const daysUntilNext = (targetDayOfWeek + 7 - todayDayOfWeek) % 7 || 7;
+        today.setDate(today.getDate() + daysUntilNext);
+        return today.toLocaleDateString('en-CA');
+      }
+
+      // Function to replace due date keywords with actual dates in user's local time zone
+      function replaceDueDateKeywords(task) {
+        return task.replace(/due:today/gi, `due:${getTodayDate()}`)
+                  .replace(/due:tomorrow/gi, `due:${getTomorrowDate()}`)
+                  .replace(/due:(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/gi, (match, day) => `due:${getNextDayOfWeekDate(day)}`);
+      }
+
+      // Function to toggle completion status
+      function toggleCompletion(task) {
+        const todayDate = getTodayDate();
+        if (task.startsWith('x ')) {
+          return task.replace(/^x \d{4}-\d{2}-\d{2} /, '');
+        } else {
+          return `x ${todayDate} ${task}`;
+        }
+      }
+
+      // Function to delete a task with a custom HTML dialog box
+      function deleteTask(index) {
+        const task = allTasks[index];
+        const htmlContent = `
+          <div class="dialog">
+            <p>Are you sure you want to delete this task?</p>
+            <p>${task.Task}</p>
+            <button class="confirm">Delete</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showPopupDelete(htmlContent, (confirmed) => {
+          if (confirmed) {
+            allTasks.splice(index, 1);
+            applyFilters();
+          }
+        });
+      }
+
+      // Function to open a popup window with a custom dialog
+      function showPopupDialog(htmlContent, callback) {
+        const popup = window.open('', 'popup', 'width=400,height=300');
+        popup.document.write(htmlContent);
+        popup.document.close();
+        const textarea = popup.document.querySelector('textarea');
+        if (textarea) {
+          textarea.focus();
+        }
+        popup.document.querySelector('.confirm').onclick = () => {
+          const input = popup.document.querySelector('input, textarea').value;
+          callback(input);
+          popup.close();
+        };
+        popup.document.querySelector('.cancel').onclick = () => {
+          callback(false);
+          popup.close();
+        };
+      }
+
+      function showPopupDelete(htmlContent, callback) {
+        const popup = window.open('', 'popup', 'width=400,height=300');
+        popup.document.write(htmlContent);
+        popup.document.close();
+        popup.document.querySelector('.confirm').onclick = () => {
+          callback(true);
+          popup.close();
+        };
+        popup.document.querySelector('.cancel').onclick = () => {
+          callback(false);
+          popup.close();
+        };
+      }
+      // Function to edit a task
+      function editTask(index) {
+        const task = allTasks[index];
+        const htmlContent = `
+          <div class="dialog">
+            <textarea>${task.Task}</textarea>
+            <button class="confirm">Save</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showPopupDialog(htmlContent, (newTask) => {
+          if (newTask !== null) {
+            allTasks[index].Task = replaceDueDateKeywords(newTask);
+            applyFilters();
+          }
+        });
+      }
+
+      function addNewTask() {
+        const htmlContent = `
+          <div class="dialog">
+            <textarea placeholder="Enter the new task" autofocus></textarea>
+            <button class="confirm">Add</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showPopupDialog(htmlContent, (newTask) => {
+          if (newTask) {
+            allTasks.unshift({ TaskID: allTasks.length, Task: replaceDueDateKeywords(newTask) });
+            applyFilters();
+          }
+        });
+      }
+
+  // Function to set the date of selected tasks
+  function setDateForSelectedTasks() {
+    const htmlContent = `
+      <div class="dialog">
+        <input type="text" placeholder="Enter the new date (YYYY-MM-DD, today, tomorrow, or day of the week)">
+        <button class="confirm">Set Date</button>
+        <button class="cancel">Cancel</button>
+      </div>
+    `;
+    showPopupDialog(htmlContent, (newDate) => {
+      if (newDate) {
+        const formattedDate = replaceDueDateKeywords(`due:${newDate}`).split('due:')[1];
+        selectedTasks.forEach(index => {
+          allTasks[index].Task = allTasks[index].Task.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${formattedDate}`);
+        });
+        applyFilters();
+      }
+    });
+  }
+
+      // Function to set the priority of selected tasks
+      function setPriorityForSelectedTasks() {
+        const htmlContent = `
+          <div class="dialog">
+            <input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
+            <button class="confirm">Set Priority</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showPopupDialog(htmlContent, (newPriority) => {
+          if (newPriority) {
+            selectedTasks.forEach(index => {
+              allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
+            });
+            applyFilters();
+          }
+        });
+      }
+
+      // Function to postpone selected tasks
+      function postponeSelectedTasks() {
+        const htmlContent = `
+          <div class="dialog">
+            <input type="number" placeholder="Enter the number of days to postpone">
+            <button class="confirm">Postpone</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showPopupDialog(htmlContent, (days) => {
+          if (days) {
+            selectedTasks.forEach(index => {
+              const task = allTasks[index];
+              const dueDateMatch = task.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
+              if (dueDateMatch) {
+                const dueDate = new Date(dueDateMatch[1]);
+                dueDate.setDate(dueDate.getDate() + parseInt(days));
+                const newDueDate = dueDate.toISOString().split('T')[0];
+                allTasks[index].Task = task.Task.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${newDueDate}`);
+              }
+            });
+            applyFilters();
+          }
+        });
+      }
+
+      // Function to create and show a custom dialog
+      function showDialog(htmlContent, callback) {
+        const dialogContainer = document.getElementById('dialogContainer');
+        dialogContainer.innerHTML = htmlContent;
+        const dialog = dialogContainer.querySelector('.dialog');
+        dialog.querySelector('.confirm').onclick = () => {
+          const input = dialog.querySelector('input, textarea').value;
+          callback(input);
+          dialogContainer.innerHTML = '';
+        };
+        dialog.querySelector('.cancel').onclick = () => {
+          dialogContainer.innerHTML = '';
+        };
+      }
+
+      // Function to save all tasks to a text file
+      function saveTasks() {
+        const allTasksText = allTasks.map(task => task.Task).join('\n');
+        google.script.run.saveTasksToFile(allTasksText);
+      }
+
+      function handleTaskClick(event, index) {
+        const taskList = document.getElementById('taskList');
+        const tasks = taskList.getElementsByClassName('task');
+
+        if (event.detail === 2) { // Double-click detected
+          editTask(index);
+        } else {
+          if (event.ctrlKey) {
+            tasks[index].classList.toggle('selected');
+            if (selectedTasks.has(index)) {
+              selectedTasks.delete(index);
+            } else {
+              selectedTasks.add(index);
+            }
+          } else if (event.shiftKey && lastSelectedIndex !== -1) {
+            const start = Math.min(lastSelectedIndex, index);
+            const end = Math.max(lastSelectedIndex, index);
+            for (let i = start; i <= end; i++) {
+              tasks[i].classList.add('selected');
+              selectedTasks.add(i);
+            }
+          } else {
+            Array.from(tasks).forEach(task => task.classList.remove('selected'));
+            tasks[index].classList.add('selected');
+            selectedTasks.clear();
+            selectedTasks.add(index);
+          }
+          lastSelectedIndex = index;
+          // alert (lastSelectedIndex);
+        }
+      }
+
+      function handleKeyDown(event) {
+        const taskList = document.getElementById('taskList');
+        const tasks = taskList.getElementsByClassName('task');
+        if (lastSelectedIndex === -1) return;
+
+        if (event.key === 'ArrowUp' && lastSelectedIndex > 0) {
+          if (event.ctrlKey) {
+            swapTasks(lastSelectedIndex, lastSelectedIndex - 1);
+            lastSelectedIndex--;
+          } else {
+            tasks[lastSelectedIndex].classList.remove('selected');
+            lastSelectedIndex--;
+            tasks[lastSelectedIndex].classList.add('selected');
+            selectedTasks.clear();
+            selectedTasks.add(lastSelectedIndex);
+          }
+        } else if (event.key === 'ArrowDown' && lastSelectedIndex < tasks.length - 1) {
+          if (event.ctrlKey) {
+            swapTasks(lastSelectedIndex, lastSelectedIndex + 1);
+            lastSelectedIndex++;
+          } else {
+            tasks[lastSelectedIndex].classList.remove('selected');
+            lastSelectedIndex++;
+            tasks[lastSelectedIndex].classList.add('selected');
+            selectedTasks.clear();
+            selectedTasks.add(lastSelectedIndex);
+          }
+        } else if (event.ctrlKey && event.key === 'c') {
+          copySelectedTasks();
+        } else if (event.ctrlKey && event.altKey && event.key >= '1' && event.key <= '9') {
+          saveFilterSet(event.key);
+        } else if (event.key >= '1' && event.key <= '9') {
+          loadFilterSet(event.key);
+        } else if (event.key === 'x') {
+          const task = allTasks[lastSelectedIndex];
+          task.Task = toggleCompletion(task.Task);
+          applyFilters();
+        } else if (event.key === 'd') {
+          deleteTask(lastSelectedIndex);
+        } else if (event.key === 'n') {
+          addNewTask();
+        } else if (event.key === 's') {
+          setDateForSelectedTasks();
+        } else if (event.key === 'i') {
+          setPriorityForSelectedTasks();
+        } else if (event.key === 'p') {
+          postponeSelectedTasks();
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', loadTasks);
+      document.addEventListener('keydown', handleKeyDown);
+    </script>
+  </body>
+</html>

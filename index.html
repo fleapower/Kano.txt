@@ -3,6 +3,7 @@
   <head>
     <base target="_top">
     <style>
+      /* ... existing styles remain the same ... */
       body { font-family: Arial, sans-serif; }
       .task { cursor: pointer; padding: 5px; border-bottom: 1px solid #ccc; }
       .selected { background-color: #f0f0f0; }
@@ -39,6 +40,7 @@
     </style>
   </head>
   <body>
+    <!-- ... existing HTML remains the same ... -->
     <h1>Task List</h1>
     <div id="dialogContainer"></div>
     <div class="filter-bar">
@@ -59,6 +61,7 @@
       let lastSelectedIndex = -1;
       let selectedTasks = new Set();
       let activeTags = new Set();
+      let filteredTasks = []; // Add this to track filtered tasks
 
       function loadTasks() {
         google.script.run.withSuccessHandler(displayTasks).getTasks();
@@ -132,35 +135,43 @@
         applyFilters();
       }
 
+      // ... keep all existing functions the same until applyFilters ...
+
       function applyFilters() {
         const dueToday = document.getElementById('dueToday').checked;
         const searchQuery = document.getElementById('searchBox').value.toLowerCase();
         const priorityFilter = document.getElementById('priorityFilter').value;
         const taskList = document.getElementById('taskList');
         taskList.innerHTML = '';
-        const filteredTasks = allTasks.filter(task => {
-          const taskText = task.Task;
-          const dueDate = task.Task.substring(task.Task.indexOf('due:') + 4, task.Task.indexOf('due:') + 14);
-          const today = getTodayDate();
-          const matchesDueToday = !dueToday || (dueDate <= today);
-          const matchesSearch = taskText.toLowerCase().includes(searchQuery);
-          const matchesPriority = priorityFilter === 'all' || taskText.startsWith(priorityFilter);
-          const matchesTags = Array.from(activeTags).length === 0 || Array.from(activeTags).some(tag => {
-          if (tag === 'No Tags') {
-            return !taskText.match(/ @\w+/);
-          }
+        
+        // Store filtered tasks with their original indices
+        filteredTasks = allTasks
+          .map((task, originalIndex) => ({ task, originalIndex }))
+          .filter(({ task }) => {
+            const taskText = task.Task;
+            const dueDate = taskText.substring(taskText.indexOf('due:') + 4, taskText.indexOf('due:') + 14);
+            const today = getTodayDate();
+            const matchesDueToday = !dueToday || (dueDate <= today);
+            const matchesSearch = taskText.toLowerCase().includes(searchQuery);
+            const matchesPriority = priorityFilter === 'all' || taskText.startsWith(priorityFilter);
+            const matchesTags = Array.from(activeTags).length === 0 || Array.from(activeTags).some(tag => {
+              if (tag === 'No Tags') {
+                return !taskText.match(/ @\w+/);
+              }
               return taskText.includes(tag);
             });
             return matchesDueToday && matchesSearch && matchesPriority && matchesTags;
-        });
+          });
 
-        filteredTasks.forEach((task, index) => {
+        filteredTasks.forEach(({ task, originalIndex }, filteredIndex) => {
           const div = document.createElement('div');
           div.className = 'task';
           div.dataset.taskId = task.TaskID;
-          div.dataset.index = index;
-          div.onclick = (event) => handleTaskClick(event, index);
-          // Format tags and color code priorities
+          div.dataset.originalIndex = originalIndex; // Store original index
+          div.dataset.filteredIndex = filteredIndex; // Store filtered index
+          div.onclick = (event) => handleTaskClick(event, filteredIndex, originalIndex);
+          
+          // ... rest of the task formatting code remains the same ...
           let taskText = task.Task
             .replace(/\(A\)/g, '<span class="priority-a">(A)</span>')
             .replace(/\(B\)/g, '<span class="priority-b">(B)</span>')
@@ -172,14 +183,12 @@
             .replace(/(last:\S+)/g, '<span class="tag">$1</span>')
             .replace(/(due:\S+)/g, '<span class="tag">$1</span>');
 
-          // Highlight overdue tasks in red
           const dueDate = taskText.substring(taskText.indexOf('due:') + 4, taskText.indexOf('due:') + 14);
           const today = getTodayDate();
           if (dueDate < today) {
             taskText = `<span class="overdue-task">${taskText}</span>`;
           }
 
-          // Strike through completed tasks
           if (task.Task.startsWith('x ')) {
             taskText = `<span class="completed-task">${taskText}</span>`;
           }
@@ -246,26 +255,36 @@
         applyFilters();
       }
 
-      function swapTasks(index1, index2) {
+      function swapTasks(filteredIndex1, filteredIndex2) {
+        // Get the original indices from the filtered tasks
+        const originalIndex1 = filteredTasks[filteredIndex1].originalIndex;
+        const originalIndex2 = filteredTasks[filteredIndex2].originalIndex;
+
         // Swap in the allTasks array
-        const tempTask = allTasks[index1];
-        allTasks[index1] = allTasks[index2];
-        allTasks[index2] = tempTask;
+        const tempTask = allTasks[originalIndex1];
+        allTasks[originalIndex1] = allTasks[originalIndex2];
+        allTasks[originalIndex2] = tempTask;
 
-        // Update the TaskID to reflect the new order
-        allTasks[index1].TaskID = index1;
-        allTasks[index2].TaskID = index2;
+        // Update TaskIDs
+        allTasks[originalIndex1].TaskID = originalIndex1;
+        allTasks[originalIndex2].TaskID = originalIndex2;
 
+        // Reapply filters to update the display
         applyFilters();
 
-        // Deselect all tasks and select the original task
+        // Update selection to follow the moved task
         const taskList = document.getElementById('taskList');
         const tasks = taskList.getElementsByClassName('task');
         Array.from(tasks).forEach(task => task.classList.remove('selected'));
-        tasks[index2].classList.add('selected');
-        selectedTasks.clear();
-        selectedTasks.add(index1);
-        lastSelectedIndex = index1;
+        
+        // Find the new filtered index of the moved task
+        const newFilteredIndex = filteredTasks.findIndex(t => t.originalIndex === originalIndex2);
+        if (newFilteredIndex !== -1) {
+          tasks[newFilteredIndex].classList.add('selected');
+          selectedTasks.clear();
+          selectedTasks.add(newFilteredIndex);
+          lastSelectedIndex = newFilteredIndex;
+        }
       }
 
 
@@ -482,35 +501,34 @@
         google.script.run.saveTasksToFile(allTasksText);
       }
 
-      function handleTaskClick(event, index) {
+      function handleTaskClick(event, filteredIndex, originalIndex) {
         const taskList = document.getElementById('taskList');
         const tasks = taskList.getElementsByClassName('task');
 
         if (event.detail === 2) { // Double-click detected
-          editTask(index);
+          editTask(originalIndex);
         } else {
           if (event.ctrlKey) {
-            tasks[index].classList.toggle('selected');
-            if (selectedTasks.has(index)) {
-              selectedTasks.delete(index);
+            tasks[filteredIndex].classList.toggle('selected');
+            if (selectedTasks.has(filteredIndex)) {
+              selectedTasks.delete(filteredIndex);
             } else {
-              selectedTasks.add(index);
+              selectedTasks.add(filteredIndex);
             }
           } else if (event.shiftKey && lastSelectedIndex !== -1) {
-            const start = Math.min(lastSelectedIndex, index);
-            const end = Math.max(lastSelectedIndex, index);
+            const start = Math.min(lastSelectedIndex, filteredIndex);
+            const end = Math.max(lastSelectedIndex, filteredIndex);
             for (let i = start; i <= end; i++) {
               tasks[i].classList.add('selected');
               selectedTasks.add(i);
             }
           } else {
             Array.from(tasks).forEach(task => task.classList.remove('selected'));
-            tasks[index].classList.add('selected');
+            tasks[filteredIndex].classList.add('selected');
             selectedTasks.clear();
-            selectedTasks.add(index);
+            selectedTasks.add(filteredIndex);
           }
-          lastSelectedIndex = index;
-          // alert (lastSelectedIndex);
+          lastSelectedIndex = filteredIndex;
         }
       }
 
@@ -522,7 +540,6 @@
         if (event.key === 'ArrowUp' && lastSelectedIndex > 0) {
           if (event.ctrlKey) {
             swapTasks(lastSelectedIndex, lastSelectedIndex - 1);
-            lastSelectedIndex--;
           } else {
             tasks[lastSelectedIndex].classList.remove('selected');
             lastSelectedIndex--;
@@ -533,7 +550,6 @@
         } else if (event.key === 'ArrowDown' && lastSelectedIndex < tasks.length - 1) {
           if (event.ctrlKey) {
             swapTasks(lastSelectedIndex, lastSelectedIndex + 1);
-            lastSelectedIndex++;
           } else {
             tasks[lastSelectedIndex].classList.remove('selected');
             lastSelectedIndex++;

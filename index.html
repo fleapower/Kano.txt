@@ -633,7 +633,7 @@
         google.script.run.saveTasksToFile(allTasksText);
       }
 
-		Copyfunction getOriginalIndices() {
+		function getOriginalIndices() {
 			const taskList = document.getElementById('taskList');
 			const tasks = taskList.getElementsByClassName('task');
 			return Array.from(selectedTasks).map(index => parseInt(tasks[index].dataset.originalIndex));

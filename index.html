@@ -523,14 +523,17 @@
     `;
     showPopupDialog(htmlContent, (newDate) => {
       if (newDate) {
+		const originalIndices = getOriginalIndices();
         const formattedDate = replaceDueDateKeywords(`due:${newDate}`).split('due:')[1];
-        selectedTasks.forEach(index => {
+        originalIndices.forEach(index => {
           allTasks[index].Task = allTasks[index].Task.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${formattedDate}`);
         });
         applyFilters();
       }
     });
   }
+  
+
 
       // Function to set the priority of selected tasks
 		function setPriorityForSelectedTasks() {
@@ -563,7 +566,8 @@
         `;
         showPopupDialog(htmlContent, (days) => {
           if (days) {
-            selectedTasks.forEach(index => {
+			const originalIndices = getOriginalIndices();
+            originalIndices.forEach(index => {
               const task = allTasks[index];
               const dueDateMatch = task.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
               if (dueDateMatch) {
@@ -577,6 +581,30 @@
           }
         });
       }
+	  
+/* scratch - delete when done
+
+      // Function to set the priority of selected tasks
+		function setPriorityForSelectedTasks() {
+			const htmlContent = `
+				<div class="dialog">
+					<input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
+					<button class="confirm">Set Priority</button>
+					<button class="cancel">Cancel</button>
+				</div>
+			`;
+			showPopupDialog(htmlContent, (newPriority) => {
+				if (newPriority) {
+					const originalIndices = getOriginalIndices();
+					originalIndices.forEach(index => {
+						allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
+					});
+					applyFilters();
+				}
+			});
+		}
+
+*/
 
 /*
       // Function to create and show a custom dialog

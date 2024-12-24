@@ -102,7 +102,7 @@
   </head>
   <body tabindex="0">
     <!-- ... existing HTML remains the same ... -->
-    <h1>Task List</h1>
+    <h1>GoDo /gudu/</h1>
     <div id="dialogContainer"></div>
     <div class="filter-bar">
       <input type="checkbox" id="dueToday" onclick="applyFilters()"> Due Today
@@ -703,8 +703,8 @@
 
       function handleKeyDown(event) {
 	  
-		// Ignore hotkeys if search box is focused
-		if (document.activeElement === document.getElementById('searchBox')) {
+		// Ignore hotkeys if search box is focused or dialog box is open
+		if (document.activeElement === document.getElementById('searchBox') || document.getElementById('dialogContainer').innerHTML !== '') {
 			return;
 		}
 	  

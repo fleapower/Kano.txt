@@ -6,7 +6,7 @@
       /* ... existing styles remain the same ... */
       body { font-family: Arial, sans-serif; }
       .task { cursor: pointer; padding: 5px; border-bottom: 1px solid #ccc; }
-      .selected { background-color: #f0f0f0; }
+      .selected { background-color: #80EF80; }
       .filter-bar { position: sticky; top: 0; background: white; padding: 10px; border-bottom: 1px solid #ccc; }
       .tag-button {
         background-color: gray;
@@ -195,15 +195,15 @@
 
           div.innerHTML = taskText;
           taskList.appendChild(div);
-        });
-		// Auto-select first task if nothing is selected
-		if (lastSelectedIndex === -1 && taskList.children.length > 0) {
-			const firstTask = taskList.children[0];
-			firstTask.classList.add('selected');
-			selectedTasks.clear();
-			selectedTasks.add(0);
-			lastSelectedIndex = 0;
-		}
+          });
+          // Auto-select first task if nothing is selected
+          if (lastSelectedIndex === -1 && taskList.children.length > 0) {
+            const firstTask = taskList.children[0];
+            firstTask.classList.add('selected');
+            selectedTasks.clear();
+            selectedTasks.add(0);
+            lastSelectedIndex = 0;
+          }
       }
 
       function clearFilters() {

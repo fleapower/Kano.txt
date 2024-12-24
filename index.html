@@ -533,23 +533,24 @@
   }
 
       // Function to set the priority of selected tasks
-      function setPriorityForSelectedTasks() {
-        const htmlContent = `
-          <div class="dialog">
-            <input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
-            <button class="confirm">Set Priority</button>
-            <button class="cancel">Cancel</button>
-          </div>
-        `;
-        showPopupDialog(htmlContent, (newPriority) => {
-          if (newPriority) {
-            selectedTasks.forEach(index => {
-              allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
-            });
-            applyFilters();
-          }
-        });
-      }
+		function setPriorityForSelectedTasks() {
+			const htmlContent = `
+				<div class="dialog">
+					<input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
+					<button class="confirm">Set Priority</button>
+					<button class="cancel">Cancel</button>
+				</div>
+			`;
+			showPopupDialog(htmlContent, (newPriority) => {
+				if (newPriority) {
+					const originalIndices = getOriginalIndices();
+					originalIndices.forEach(index => {
+						allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
+					});
+					applyFilters();
+				}
+			});
+		}
 
       // Function to postpone selected tasks
       function postponeSelectedTasks() {
@@ -632,36 +633,43 @@
         google.script.run.saveTasksToFile(allTasksText);
       }
 
-      function handleTaskClick(event, filteredIndex, originalIndex) {
-        const taskList = document.getElementById('taskList');
-        const tasks = taskList.getElementsByClassName('task');
+		Copyfunction getOriginalIndices() {
+			const taskList = document.getElementById('taskList');
+			const tasks = taskList.getElementsByClassName('task');
+			return Array.from(selectedTasks).map(index => parseInt(tasks[index].dataset.originalIndex));
+		}
 
-        if (event.detail === 2) { // Double-click detected
-          editTask(originalIndex);
-        } else {
-          if (event.ctrlKey) {
-            tasks[filteredIndex].classList.toggle('selected');
-            if (selectedTasks.has(filteredIndex)) {
-              selectedTasks.delete(filteredIndex);
-            } else {
-              selectedTasks.add(filteredIndex);
-            }
-          } else if (event.shiftKey && lastSelectedIndex !== -1) {
-            const start = Math.min(lastSelectedIndex, filteredIndex);
-            const end = Math.max(lastSelectedIndex, filteredIndex);
-            for (let i = start; i <= end; i++) {
-              tasks[i].classList.add('selected');
-              selectedTasks.add(i);
-            }
-          } else {
-            Array.from(tasks).forEach(task => task.classList.remove('selected'));
-            tasks[filteredIndex].classList.add('selected');
-            selectedTasks.clear();
-            selectedTasks.add(filteredIndex);
-          }
-          lastSelectedIndex = filteredIndex;
-        }
-      }
+		function handleTaskClick(event, index) {
+			const taskList = document.getElementById('taskList');
+			const tasks = taskList.getElementsByClassName('task');
+			const originalIndex = parseInt(tasks[index].dataset.originalIndex);
+
+			if (event.detail === 2) {
+				editTask(originalIndex);
+			} else {
+				if (event.ctrlKey) {
+					tasks[index].classList.toggle('selected');
+					if (selectedTasks.has(index)) {
+						selectedTasks.delete(index);
+					} else {
+						selectedTasks.add(index);
+					}
+				} else if (event.shiftKey && lastSelectedIndex !== -1) {
+					const start = Math.min(lastSelectedIndex, index);
+					const end = Math.max(lastSelectedIndex, index);
+					for (let i = start; i <= end; i++) {
+						tasks[i].classList.add('selected');
+						selectedTasks.add(i);
+					}
+				} else {
+					Array.from(tasks).forEach(task => task.classList.remove('selected'));
+					tasks[index].classList.add('selected');
+					selectedTasks.clear();
+					selectedTasks.add(index);
+				}
+				lastSelectedIndex = index;
+			}
+		}
 
       function handleKeyDown(event) {
 	  

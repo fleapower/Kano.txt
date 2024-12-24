@@ -701,7 +701,7 @@
         } else if (event.key >= '1' && event.key <= '9') {
           loadFilterSet(event.key);
         } else if (event.key === 'x') {
-          const task = allTasks[lastSelectedIndex];
+          const task = allTasks[filteredTasks[lastSelectedIndex].originalIndex];
           task.Task = toggleCompletion(task.Task);
           applyFilters();
         } else if (event.key === 'd') {

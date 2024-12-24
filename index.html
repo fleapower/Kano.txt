@@ -66,6 +66,8 @@
         margin: 10px 0;
         border: 1px solid #ddd;
         border-radius: 4px;
+		font-family: Arial, sans-serif;
+		font-size: 20px; 
       }
 
       .sidebar-dialog .buttons {
@@ -91,18 +93,11 @@
         color: white;
       }
 
-
-
-
-
-
-
-
     </style>
   </head>
   <body tabindex="0">
     <!-- ... existing HTML remains the same ... -->
-    <h1>GoDo /gudu/</h1>
+    <h1>GooDo.txt</h1>
     <div id="dialogContainer"></div>
     <div class="filter-bar">
       <input type="checkbox" id="dueToday" onclick="applyFilters()"> Due Today
@@ -301,17 +296,36 @@
 		navigator.clipboard.writeText(selectedText);
         const htmlContent = `
 			<h2>Task(s) copied to clipboard.</h2>
-              <div class="buttons">
-                  <button class="confirm">OK</button>
-              </div>
+			<input type=hidden value="copy">
+            <div class="buttons">
+				<button class="confirm">OK</button>
+            </div>
           `;
           showDialog(htmlContent, (confirm) => {
-              if (newTask !== null) {
-                  allTasks[index].Task = replaceDueDateKeywords(newTask);
-                  applyFilters();
-              }
           });
         };
+		
+		function deleteTask(index) {
+			const task = allTasks[index];
+			const htmlContent = `
+				<h2>Delete Task(s)</h2>
+				<input type=hidden value="delete">
+				<p>Are you sure you want to delete these tasks?</p>
+				<div class="buttons">
+					<button class="confirm" data-confirmed="true">Delete</button>
+					<button class="cancel" data-confirmed="false">Cancel</button>
+				</div>
+			`;
+			showDialog(htmlContent, (confirmed) => {
+				if (confirmed) {
+					const originalIndices = getOriginalIndices().sort((a, b) => b - a);  // Sort in reverse order
+					originalIndices.forEach(idx => {
+						allTasks.splice(idx, 1);
+					});
+					applyFilters();
+				}
+			});
+		}
 	  
       function saveFilterSet(number) {
         const filterSet = {
@@ -467,28 +481,7 @@
         });
       }
 
-		function deleteTask(index) {
-			const task = allTasks[index];
-			const htmlContent = `
-				<h2>Delete Task(s)</h2>
-				<input type=hidden value="delete">
-				<p>Are you sure you want to delete these tasks?</p>
-				<div class="buttons">
-					<button class="confirm" data-confirmed="true">Delete</button>
-					<button class="cancel" data-confirmed="false">Cancel</button>
-				</div>
-			`;
-			showDialog(htmlContent, (confirmed) => {
-//				const confirmed = dialogContainer.querySelector('.confirm').getAttribute('data-confirmed') === 'true';
-				if (confirmed) {
-					const originalIndices = getOriginalIndices().sort((a, b) => b - a);  // Sort in reverse order
-					originalIndices.forEach(idx => {
-						allTasks.splice(idx, 1);
-					});
-					applyFilters();
-				}
-			});
-		}
+
 
   // Function to set the date of selected tasks
   function setDateForSelectedTasks() {

@@ -541,6 +541,12 @@
       }
 
       function handleKeyDown(event) {
+	  
+		// Ignore hotkeys if search box is focused
+		if (document.activeElement === document.getElementById('searchBox')) {
+			return;
+		}
+	  
         const taskList = document.getElementById('taskList');
         const tasks = taskList.getElementsByClassName('task');
         if (lastSelectedIndex === -1) return;

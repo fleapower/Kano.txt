@@ -39,7 +39,7 @@
       }
     </style>
   </head>
-  <body>
+  <body tabindex="0">
     <!-- ... existing HTML remains the same ... -->
     <h1>Task List</h1>
     <div id="dialogContainer"></div>
@@ -196,6 +196,14 @@
           div.innerHTML = taskText;
           taskList.appendChild(div);
         });
+		// Auto-select first task if nothing is selected
+		if (lastSelectedIndex === -1 && taskList.children.length > 0) {
+			const firstTask = taskList.children[0];
+			firstTask.classList.add('selected');
+			selectedTasks.clear();
+			selectedTasks.add(0);
+			lastSelectedIndex = 0;
+		}
       }
 
       function clearFilters() {
@@ -582,6 +590,10 @@
 
       document.addEventListener('DOMContentLoaded', loadTasks);
       document.addEventListener('keydown', handleKeyDown);
+	  
+	  // Add this line to focus the page on load
+	  window.onload = () => document.body.focus();
+	  
     </script>
   </body>
 </html>

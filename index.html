@@ -406,23 +406,25 @@
       }
 
       // Function to delete a task with a custom HTML dialog box
-      function deleteTask(index) {
-        const task = allTasks[index];
-        const htmlContent = `
-          <div class="dialog">
-            <p>Are you sure you want to delete this task?</p>
-            <p>${task.Task}</p>
-            <button class="confirm">Delete</button>
-            <button class="cancel">Cancel</button>
-          </div>
-        `;
-        showPopupDelete(htmlContent, (confirmed) => {
-          if (confirmed) {
-            allTasks.splice(index, 1);
-            applyFilters();
-          }
-        });
-      }
+		function deleteTask(index) {
+			const task = allTasks[index];
+			const htmlContent = `
+				<div class="dialog">
+					<p>Are you sure you want to delete these tasks?</p>
+					<button class="confirm">Delete</button>
+					<button class="cancel">Cancel</button>
+				</div>
+			`;
+			showPopupDelete(htmlContent, (confirmed) => {
+				if (confirmed) {
+					const originalIndices = getOriginalIndices().sort((a, b) => b - a);  // Sort in reverse order
+					originalIndices.forEach(idx => {
+						allTasks.splice(idx, 1);
+					});
+					applyFilters();
+				}
+			});
+		}
 
       // Function to open a popup window with a custom dialog
       function showPopupDialog(htmlContent, callback) {

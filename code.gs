@@ -1,7 +1,7 @@
 var FILE_ID = '1BAfmjodr1dTtXRFVwzAKGFJ8VHyq3mAv'; // Replace with your actual file ID
 
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('Index');
+  return HtmlService.createHtmlOutputFromFile('index');
 }
 
 function getTasks() {

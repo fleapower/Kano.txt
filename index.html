@@ -37,6 +37,11 @@
       .overdue-task {
         color: red;
       }
+      .task {
+        -webkit-user-select: none;  /* Safari */
+        -ms-user-select: none;      /* IE 10 and IE 11 */
+        user-select: none;          /* Standard syntax */
+      }
     </style>
   </head>
   <body tabindex="0">
@@ -104,12 +109,12 @@
         });
         tagButtons.innerHTML = '';
 
-        // Add "No Tags" button
+        // Add "No Lists" button
         const noTagsButton = document.createElement('button');
         noTagsButton.className = 'tag-button';
-        noTagsButton.textContent = 'No Tags';
-        noTagsButton.dataset.tag = 'No Tags';
-        noTagsButton.onclick = () => toggleTagFilter('No Tags');
+        noTagsButton.textContent = 'No Lists';
+        noTagsButton.dataset.tag = 'No Lists';
+        noTagsButton.onclick = () => toggleTagFilter('No Lists');
         tagButtons.appendChild(noTagsButton);
 
         Array.from(tags).sort().forEach(tag => {
@@ -155,7 +160,7 @@
             const matchesSearch = taskText.toLowerCase().includes(searchQuery);
             const matchesPriority = priorityFilter === 'all' || taskText.startsWith(priorityFilter);
             const matchesTags = Array.from(activeTags).length === 0 || Array.from(activeTags).some(tag => {
-              if (tag === 'No Tags') {
+              if (tag === 'No Lists') {
                 return !taskText.match(/ @\w+/);
               }
               return taskText.includes(tag);
@@ -210,6 +215,13 @@
         document.getElementById('dueToday').checked = false;
         document.getElementById('searchBox').value = '';
         document.getElementById('priorityFilter').value = 'all';
+		
+		// Reset tag buttons visual state
+		const tagButtons = document.getElementsByClassName('tag-button');
+		Array.from(tagButtons).forEach(button => {
+		  button.classList.remove('selected');
+		});
+		
         activeTags.clear();
         applyFilters();
       }

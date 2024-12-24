@@ -705,7 +705,7 @@
           task.Task = toggleCompletion(task.Task);
           applyFilters();
         } else if (event.key === 'd') {
-          deleteTask(lastSelectedIndex);
+          deleteTask(filteredTasks[lastSelectedIndex].originalIndex);
         } else if (event.key === 'n') {
           addNewTask();
         } else if (event.key === 's') {

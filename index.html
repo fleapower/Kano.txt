@@ -639,7 +639,6 @@
         if (document.activeElement === document.getElementById('searchBox') || document.getElementById('dialogContainer').innerHTML !== '') {
           return;
         }
-        alert(keypress)
         const taskList = document.getElementById('taskList');
         const tasks = taskList.getElementsByClassName('task');
         if (lastSelectedIndex === -1) return;

@@ -293,14 +293,14 @@
           .sort((a, b) => a - b)
           .map(index => tasks[index].textContent)
           .join('\n');
-		navigator.clipboard.writeText(selectedText);
+		    navigator.clipboard.writeText(selectedText);
         const htmlContent = `
-			<h2>Task(s) copied to clipboard.</h2>
-			<input type=hidden value="copy">
-            <div class="buttons">
-				<button class="confirm">OK</button>
-            </div>
-          `;
+		    	<h2>Copied to clipboard.</h2>
+			    <input type=hidden value="copy">
+          <div class="buttons">
+			    	<button class="confirm">OK</button>
+          </div>
+        `;
           showDialog(htmlContent, (confirm) => {
           });
         };
@@ -313,6 +313,15 @@
           activeTags: Array.from(activeTags)
         };
         google.script.run.saveFilterSet(number, filterSet);
+        const htmlContent = `
+		    	<h2>Filter set saved.</h2>
+			    <input type=hidden value="copy">
+          <div class="buttons">
+			    	<button class="confirm">OK</button>
+          </div>
+        `;
+        showDialog(htmlContent, (confirm) => {
+        });
       }
 
       function loadFilterSet(number) {
@@ -464,15 +473,16 @@
   // Function to set the date of selected tasks
   function setDateForSelectedTasks() {
     const htmlContent = `
-      <div class="dialog">
-        <input type="text" placeholder="Enter the new date (YYYY-MM-DD, today, tomorrow, or day of the week)">
+      <h2>Set Due Date</h2>
+      <input type="text" placeholder="Enter the new date (YYYY-MM-DD, today, tomorrow, or day of the week)">
+      <div class="buttons">
         <button class="confirm">Set Date</button>
         <button class="cancel">Cancel</button>
       </div>
     `;
-    showPopupDialog(htmlContent, (newDate) => {
+    showDialog(htmlContent, (newDate) => {
       if (newDate) {
-		const originalIndices = getOriginalIndices();
+		    const originalIndices = getOriginalIndices();
         const formattedDate = replaceDueDateKeywords(`due:${newDate}`).split('due:')[1];
         originalIndices.forEach(index => {
           allTasks[index].Task = allTasks[index].Task.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${formattedDate}`);
@@ -481,13 +491,34 @@
       }
     });
   }
+
+
+  		function setPriorityForSelectedTasks() {
+			const htmlContent = `
+        <h2>Set Priority</h2>
+				<input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
+				<div class="buttons">
+					<button class="confirm">Set Priority</button>
+					<button class="cancel">Cancel</button>
+				</div>
+			`;
+			showDialog(htmlContent, (newPriority) => {
+				if (newPriority) {
+					const originalIndices = getOriginalIndices();
+					originalIndices.forEach(index => {
+						allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
+					});
+					applyFilters();
+				}
+			});
+		}
   
 		function deleteTask(index) {
 			const task = allTasks[index];
 			const htmlContent = `
 				<h2>Delete Task(s)</h2>
 				<input type=hidden value="delete">
-				<p>Are you sure you want to delete these tasks?</p>
+				<p>Are you sure?</p>
 				<div class="buttons">
 					<button class="confirm" data-confirmed="true">Delete</button>
 					<button class="cancel" data-confirmed="false">Cancel</button>
@@ -527,15 +558,16 @@
       // Function to postpone selected tasks
       function postponeSelectedTasks() {
         const htmlContent = `
-          <div class="dialog">
-            <input type="number" placeholder="Enter the number of days to postpone">
+        <h2>Postpone</h2>
+        <input type="number" placeholder="Enter the number of days to postpone">
+        <div class="buttons">
             <button class="confirm">Postpone</button>
             <button class="cancel">Cancel</button>
           </div>
         `;
-        showPopupDialog(htmlContent, (days) => {
+        showDialog(htmlContent, (days) => {
           if (days) {
-			const originalIndices = getOriginalIndices();
+			      const originalIndices = getOriginalIndices();
             originalIndices.forEach(index => {
               const task = allTasks[index];
               const dueDateMatch = task.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
@@ -663,7 +695,7 @@
             selectedTasks.clear();
             selectedTasks.add(lastSelectedIndex);
           }
-        } else if (event.ctrlKey && event.key === 'c') {
+        } else if (event.key === 'c') {
           copySelectedTasks();
         } else if (event.ctrlKey && event.altKey && event.key >= '1' && event.key <= '9') {
           saveFilterSet(event.key);
@@ -674,14 +706,19 @@
           task.Task = toggleCompletion(task.Task);
           applyFilters();
         } else if (event.key === 'd') {
+          event.preventDefault();
           deleteTask(filteredTasks[lastSelectedIndex].originalIndex);
-        } else if (event.key === '(') {
+        } else if (event.key === 'n') {
+          event.preventDefault();
           addNewTask();
         } else if (event.key === 's') {
+          event.preventDefault();
           setDateForSelectedTasks();
         } else if (event.key === 'i') {
+          event.preventDefault();
           setPriorityForSelectedTasks();
         } else if (event.key === 'p') {
+          event.preventDefault();
           postponeSelectedTasks();
         }
       }

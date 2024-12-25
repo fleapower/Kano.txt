@@ -66,8 +66,8 @@
         margin: 10px 0;
         border: 1px solid #ddd;
         border-radius: 4px;
-		font-family: Arial, sans-serif;
-		font-size: 20px; 
+        font-family: Arial, sans-serif;
+        font-size: 20px; 
       }
 
       .sidebar-dialog .buttons {
@@ -226,8 +226,7 @@
           div.dataset.originalIndex = originalIndex; // Store original index
           div.dataset.filteredIndex = filteredIndex; // Store filtered index
           div.onclick = (event) => handleTaskClick(event, filteredIndex, originalIndex);
-          
-          // ... rest of the task formatting code remains the same ...
+
           let taskText = task.Task
             .replace(/\(A\)/g, '<span class="priority-a">(A)</span>')
             .replace(/\(B\)/g, '<span class="priority-b">(B)</span>')
@@ -252,27 +251,26 @@
           div.innerHTML = taskText;
           taskList.appendChild(div);
           });
-          // Auto-select first task if nothing is selected
-          if (lastSelectedIndex === -1 && taskList.children.length > 0) {
-            const firstTask = taskList.children[0];
-            firstTask.classList.add('selected');
-            selectedTasks.clear();
-            selectedTasks.add(0);
-            lastSelectedIndex = 0;
-          }
+        // Auto-select first task if nothing is selected
+        if (lastSelectedIndex === -1 && taskList.children.length > 0) {
+          const firstTask = taskList.children[0];
+          firstTask.classList.add('selected');
+          selectedTasks.clear();
+          selectedTasks.add(0);
+          lastSelectedIndex = 0;
+        }
       }
 
       function clearFilters() {
         document.getElementById('dueToday').checked = false;
         document.getElementById('searchBox').value = '';
         document.getElementById('priorityFilter').value = 'all';
-		
-		// Reset tag buttons visual state
-		const tagButtons = document.getElementsByClassName('tag-button');
-		Array.from(tagButtons).forEach(button => {
-		  button.classList.remove('selected');
-		});
-		
+    
+        // Reset tag buttons visual state
+        const tagButtons = document.getElementsByClassName('tag-button');
+        Array.from(tagButtons).forEach(button => {
+          button.classList.remove('selected');
+        });
         activeTags.clear();
         applyFilters();
       }
@@ -434,24 +432,24 @@
       // Function to edit a task
 
       function editTask(index) {
-          const task = allTasks[index];
-          const htmlContent = `
-              <h2>Edit Task</h2>
-              <textarea autofocus>${task.Task}</textarea>
-              <div class="buttons">
-                  <button class="confirm">Save</button>
-                  <button class="cancel">Cancel</button>
-              </div>
-          `;
-          showDialog(htmlContent, (newTask) => {
-              if (newTask !== null) {
-                  allTasks[index].Task = replaceDueDateKeywords(newTask);
-                  applyFilters();
-              }
-          });
+        const task = allTasks[index];
+        const htmlContent = `
+          <h2>Edit Task</h2>
+          <textarea autofocus>${task.Task}</textarea>
+          <div class="buttons">
+            <button class="confirm">Save</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showDialog(htmlContent, (newTask) => {
+          if (newTask !== null) {
+            allTasks[index].Task = replaceDueDateKeywords(newTask);
+            applyFilters();
+          }
+        });
       }
 	  
-	  function addNewTask() {
+	    function addNewTask() {
         const htmlContent = `
           <h2>New Task</h2>
           <textarea placeholder="Enter the new task" autofocus></textarea>
@@ -459,7 +457,7 @@
             <button class="confirm">Add</button>
             <button class="cancel">Cancel</button>
           </div>
-        `;
+          `;
         showDialog(htmlContent, (newTask) => {
           if (newTask) {
             allTasks.unshift({ TaskID: allTasks.length, Task: replaceDueDateKeywords(newTask) });
@@ -468,92 +466,88 @@
         });
       }
 
-
-
-  // Function to set the date of selected tasks
-  function setDateForSelectedTasks() {
-    const htmlContent = `
-      <h2>Set Due Date</h2>
-      <input type="text" placeholder="Enter the new date (YYYY-MM-DD, today, tomorrow, or day of the week)">
-      <div class="buttons">
-        <button class="confirm">Set Date</button>
-        <button class="cancel">Cancel</button>
-      </div>
-    `;
-    showDialog(htmlContent, (newDate) => {
-      if (newDate) {
-		    const originalIndices = getOriginalIndices();
-        const formattedDate = replaceDueDateKeywords(`due:${newDate}`).split('due:')[1];
-        originalIndices.forEach(index => {
-          allTasks[index].Task = allTasks[index].Task.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${formattedDate}`);
+      function setDateForSelectedTasks() {
+        const htmlContent = `
+          <h2>Set Due Date</h2>
+          <input type="text" placeholder="Enter the new date (YYYY-MM-DD, today, tomorrow, or day of the week)">
+          <div class="buttons">
+            <button class="confirm">Set Date</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showDialog(htmlContent, (newDate) => {
+          if (newDate) {
+            const originalIndices = getOriginalIndices();
+            const formattedDate = replaceDueDateKeywords(`due:${newDate}`).split('due:')[1];
+            originalIndices.forEach(index => {
+              allTasks[index].Task = allTasks[index].Task.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${formattedDate}`);
+            });
+            applyFilters();
+          }
         });
-        applyFilters();
       }
-    });
-  }
-
 
   		function setPriorityForSelectedTasks() {
-			const htmlContent = `
-        <h2>Set Priority</h2>
-				<input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
-				<div class="buttons">
-					<button class="confirm">Set Priority</button>
-					<button class="cancel">Cancel</button>
-				</div>
-			`;
-			showDialog(htmlContent, (newPriority) => {
-				if (newPriority) {
-					const originalIndices = getOriginalIndices();
-					originalIndices.forEach(index => {
-						allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
-					});
-					applyFilters();
-				}
-			});
-		}
-  
-		function deleteTask(index) {
-			const task = allTasks[index];
-			const htmlContent = `
-				<h2>Delete Task(s)</h2>
-				<input type=hidden value="delete">
-				<p>Are you sure?</p>
-				<div class="buttons">
-					<button class="confirm" data-confirmed="true">Delete</button>
-					<button class="cancel" data-confirmed="false">Cancel</button>
-				</div>
-			`;
-			showDialog(htmlContent, (confirmed) => {
-				if (confirmed) {
-					const originalIndices = getOriginalIndices().sort((a, b) => b - a);  // Sort in reverse order
-					originalIndices.forEach(idx => {
-						allTasks.splice(idx, 1);
-					});
-					applyFilters();
-				}
-			});
-		}
+        const htmlContent = `
+          <h2>Set Priority</h2>
+          <input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
+          <div class="buttons">
+            <button class="confirm">Set Priority</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showDialog(htmlContent, (newPriority) => {
+          if (newPriority) {
+            const originalIndices = getOriginalIndices();
+            originalIndices.forEach(index => {
+              allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
+            });
+            applyFilters();
+          }
+        });
+      }
+    
+      function deleteTask(index) {
+        const task = allTasks[index];
+        const htmlContent = `
+          <h2>Delete Task(s)</h2>
+          <input type=hidden value="delete">
+          <p>Are you sure?</p>
+          <div class="buttons">
+            <button class="confirm" data-confirmed="true">Delete</button>
+            <button class="cancel" data-confirmed="false">Cancel</button>
+          </div>
+        `;
+        showDialog(htmlContent, (confirmed) => {
+          if (confirmed) {
+            const originalIndices = getOriginalIndices().sort((a, b) => b - a);  // Sort in reverse order
+            originalIndices.forEach(idx => {
+              allTasks.splice(idx, 1);
+            });
+            applyFilters();
+          }
+        });
+      }
 
-		function setPriorityForSelectedTasks() {
-			const htmlContent = `
-        <h2>Set Priority</h2>
-				<input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
-				<div class="buttons">
-					<button class="confirm">Set Priority</button>
-					<button class="cancel">Cancel</button>
-				</div>
-			`;
-			showDialog(htmlContent, (newPriority) => {
-				if (newPriority) {
-					const originalIndices = getOriginalIndices();
-					originalIndices.forEach(index => {
-						allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
-					});
-					applyFilters();
-				}
-			});
-		}
+      function setPriorityForSelectedTasks() {
+        const htmlContent = `
+          <h2>Set Priority</h2>
+          <input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
+          <div class="buttons">
+            <button class="confirm">Set Priority</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showDialog(htmlContent, (newPriority) => {
+          if (newPriority) {
+            const originalIndices = getOriginalIndices();
+            originalIndices.forEach(index => {
+              allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
+            });
+            applyFilters();
+          }
+        });
+      }
 
       // Function to postpone selected tasks
       function postponeSelectedTasks() {
@@ -584,41 +578,41 @@
       }
 
       function showDialog(htmlContent, callback) {
-          const dialogContainer = document.getElementById('dialogContainer');
-          dialogContainer.innerHTML = `
-              <div class="sidebar-dialog">
-                  ${htmlContent}
-              </div>
-          `;
+        const dialogContainer = document.getElementById('dialogContainer');
+        dialogContainer.innerHTML = `
+          <div class="sidebar-dialog">
+            ${htmlContent}
+          </div>
+        `;
           
-          const dialog = dialogContainer.querySelector('.sidebar-dialog');
-          setTimeout(() => dialog.classList.add('active'), 10); // Trigger animation
+        const dialog = dialogContainer.querySelector('.sidebar-dialog');
+        setTimeout(() => dialog.classList.add('active'), 10); // Trigger animation
 
+        const input = dialog.querySelector('input, textarea');
+        if (input) {
+          input.focus();
+          // Add this event listener to stop propagation
+          input.addEventListener('keydown', (e) => {
+              e.stopPropagation();
+          });
+        }
+
+        dialog.querySelector('.confirm').onclick = () => {
           const input = dialog.querySelector('input, textarea');
-          if (input) {
-              input.focus();
-              // Add this event listener to stop propagation
-              input.addEventListener('keydown', (e) => {
-                  e.stopPropagation();
-              });
-          }
-
-          dialog.querySelector('.confirm').onclick = () => {
-              const input = dialog.querySelector('input, textarea');
-              dialog.classList.remove('active');
-              setTimeout(() => {
-                  callback(input.value);
+          dialog.classList.remove('active');
+          setTimeout(() => {
+            callback(input.value);
 			      dialogContainer.innerHTML = '';
-              }, 300); // Wait for animation
-          };
+          }, 300); // Wait for animation
+        };
 
-          dialog.querySelector('.cancel').onclick = () => {
-              dialog.classList.remove('active');
-              setTimeout(() => {
-                  callback(null);
-			      dialogContainer.innerHTML = '';
-              }, 300); // Wait for animation
-          };
+        dialog.querySelector('.cancel').onclick = () => {
+          dialog.classList.remove('active');
+          setTimeout(() => {
+            callback(null);
+            dialogContainer.innerHTML = '';
+          }, 300); // Wait for animation
+        };
       }
 
       // Function to save all tasks to a text file
@@ -627,43 +621,43 @@
         google.script.run.saveTasksToFile(allTasksText);
       }
 
-		function getOriginalIndices() {
-			const taskList = document.getElementById('taskList');
-			const tasks = taskList.getElementsByClassName('task');
-			return Array.from(selectedTasks).map(index => parseInt(tasks[index].dataset.originalIndex));
-		}
+      function getOriginalIndices() {
+        const taskList = document.getElementById('taskList');
+        const tasks = taskList.getElementsByClassName('task');
+        return Array.from(selectedTasks).map(index => parseInt(tasks[index].dataset.originalIndex));
+      }
 
-		function handleTaskClick(event, index) {
-			const taskList = document.getElementById('taskList');
-			const tasks = taskList.getElementsByClassName('task');
-			const originalIndex = parseInt(tasks[index].dataset.originalIndex);
+      function handleTaskClick(event, index) {
+        const taskList = document.getElementById('taskList');
+        const tasks = taskList.getElementsByClassName('task');
+        const originalIndex = parseInt(tasks[index].dataset.originalIndex);
 
-			if (event.detail === 2) {
-				editTask(originalIndex);
-			} else {
-				if (event.ctrlKey) {
-					tasks[index].classList.toggle('selected');
-					if (selectedTasks.has(index)) {
-						selectedTasks.delete(index);
-					} else {
-						selectedTasks.add(index);
-					}
-				} else if (event.shiftKey && lastSelectedIndex !== -1) {
-					const start = Math.min(lastSelectedIndex, index);
-					const end = Math.max(lastSelectedIndex, index);
-					for (let i = start; i <= end; i++) {
-						tasks[i].classList.add('selected');
-						selectedTasks.add(i);
-					}
-				} else {
-					Array.from(tasks).forEach(task => task.classList.remove('selected'));
-					tasks[index].classList.add('selected');
-					selectedTasks.clear();
-					selectedTasks.add(index);
-				}
-				lastSelectedIndex = index;
-			}
-		}
+        if (event.detail === 2) {
+          editTask(originalIndex);
+        } else {
+          if (event.ctrlKey) {
+            tasks[index].classList.toggle('selected');
+            if (selectedTasks.has(index)) {
+              selectedTasks.delete(index);
+            } else {
+              selectedTasks.add(index);
+            }
+          } else if (event.shiftKey && lastSelectedIndex !== -1) {
+            const start = Math.min(lastSelectedIndex, index);
+            const end = Math.max(lastSelectedIndex, index);
+            for (let i = start; i <= end; i++) {
+              tasks[i].classList.add('selected');
+              selectedTasks.add(i);
+            }
+          } else {
+            Array.from(tasks).forEach(task => task.classList.remove('selected'));
+            tasks[index].classList.add('selected');
+            selectedTasks.clear();
+            selectedTasks.add(index);
+          }
+          lastSelectedIndex = index;
+        }
+      }
 
       function handleKeyDown(event) {
 	  
@@ -726,8 +720,8 @@
       document.addEventListener('DOMContentLoaded', loadTasks);
       document.addEventListener('keydown', handleKeyDown);
 	  
-	  // Add this line to focus the page on load
-	  window.onload = () => document.body.focus();
+	    // Add this line to focus the page on load
+	    window.onload = () => document.body.focus();
 	  
     </script>
   </body>

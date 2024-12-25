@@ -304,28 +304,6 @@
           showDialog(htmlContent, (confirm) => {
           });
         };
-		
-		function deleteTask(index) {
-			const task = allTasks[index];
-			const htmlContent = `
-				<h2>Delete Task(s)</h2>
-				<input type=hidden value="delete">
-				<p>Are you sure you want to delete these tasks?</p>
-				<div class="buttons">
-					<button class="confirm" data-confirmed="true">Delete</button>
-					<button class="cancel" data-confirmed="false">Cancel</button>
-				</div>
-			`;
-			showDialog(htmlContent, (confirmed) => {
-				if (confirmed) {
-					const originalIndices = getOriginalIndices().sort((a, b) => b - a);  // Sort in reverse order
-					originalIndices.forEach(idx => {
-						allTasks.splice(idx, 1);
-					});
-					applyFilters();
-				}
-			});
-		}
 	  
       function saveFilterSet(number) {
         const filterSet = {
@@ -504,18 +482,38 @@
     });
   }
   
+		function deleteTask(index) {
+			const task = allTasks[index];
+			const htmlContent = `
+				<h2>Delete Task(s)</h2>
+				<input type=hidden value="delete">
+				<p>Are you sure you want to delete these tasks?</p>
+				<div class="buttons">
+					<button class="confirm" data-confirmed="true">Delete</button>
+					<button class="cancel" data-confirmed="false">Cancel</button>
+				</div>
+			`;
+			showDialog(htmlContent, (confirmed) => {
+				if (confirmed) {
+					const originalIndices = getOriginalIndices().sort((a, b) => b - a);  // Sort in reverse order
+					originalIndices.forEach(idx => {
+						allTasks.splice(idx, 1);
+					});
+					applyFilters();
+				}
+			});
+		}
 
-
-      // Function to set the priority of selected tasks
 		function setPriorityForSelectedTasks() {
 			const htmlContent = `
-				<div class="dialog">
-					<input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
+        <h2>Set Priority</h2>
+				<input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
+				<div class="buttons">
 					<button class="confirm">Set Priority</button>
 					<button class="cancel">Cancel</button>
 				</div>
 			`;
-			showPopupDialog(htmlContent, (newPriority) => {
+			showDialog(htmlContent, (newPriority) => {
 				if (newPriority) {
 					const originalIndices = getOriginalIndices();
 					originalIndices.forEach(index => {
@@ -565,7 +563,13 @@
           setTimeout(() => dialog.classList.add('active'), 10); // Trigger animation
 
           const input = dialog.querySelector('input, textarea');
-          if (input) input.focus();
+          if (input) {
+              input.focus();
+              // Add this event listener to stop propagation
+              input.addEventListener('keydown', (e) => {
+                  e.stopPropagation();
+              });
+          }
 
           dialog.querySelector('.confirm').onclick = () => {
               const input = dialog.querySelector('input, textarea');
@@ -631,11 +635,11 @@
 
       function handleKeyDown(event) {
 	  
-		// Ignore hotkeys if search box is focused or dialog box is open
-		if (document.activeElement === document.getElementById('searchBox') || document.getElementById('dialogContainer').innerHTML !== '') {
-			return;
-		}
-	  
+        // Ignore hotkeys if search box is focused or dialog box is open
+        if (document.activeElement === document.getElementById('searchBox') || document.getElementById('dialogContainer').innerHTML !== '') {
+          return;
+        }
+        alert(keypress)
         const taskList = document.getElementById('taskList');
         const tasks = taskList.getElementsByClassName('task');
         if (lastSelectedIndex === -1) return;

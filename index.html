@@ -299,7 +299,7 @@
         const selectedText = Array.from(selectedTasks)
           .sort((a, b) => a - b)
           .map(index => tasks[index].textContent)
-          .join('\n');
+          .join('');
 		    navigator.clipboard.writeText(selectedText);
       };
 	  

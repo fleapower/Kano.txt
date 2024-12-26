@@ -866,6 +866,9 @@
         } else if (event.key === 's') {
           event.preventDefault();
           setDateForSelectedTasks();
+        } else if (event.key === 't') {
+          event.preventDefault();
+          sortTasksByDueDate();
         } else if (event.key === 'i') {
           event.preventDefault();
           setPriorityForSelectedTasks();

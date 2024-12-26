@@ -108,7 +108,6 @@
       </select>
       <button onclick="clearFilters()">Clear Filters</button>
       <button onclick="sortTasksByDueDate()">Sort by Due Date</button>
-      <button onclick="saveTasks()">Save Tasks</button>
     </div>
     <div id="tagButtons" class="filter-bar"></div>
     <div id="taskList"></div>
@@ -118,6 +117,8 @@
       let selectedTasks = new Set();
       let activeTags = new Set();
       let filteredTasks = []; // Add this to track filtered tasks
+
+      const saveTimeout = 3000;
 
       function loadTasks() {
         google.script.run.withSuccessHandler(displayTasks).getTasks();
@@ -399,14 +400,15 @@
                   .replace(/due:(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/gi, (match, day) => `due:${getNextDayOfWeekDate(day)}`);
       }
 
-      // Function to toggle completion status
-      function toggleCompletion(task) {
-        const todayDate = getTodayDate();
-        if (task.startsWith('x ')) {
-          return task.replace(/^x \d{4}-\d{2}-\d{2} /, '');
+      function toggleCompletion(selectedTasks) {
+      const todayDate = getTodayDate();
+      selectedTasks.forEach(task => {
+        if (task.Task.startsWith('x ')) {
+          task.Task = task.Task.replace(/^x \d{4}-\d{2}-\d{2} /, '');
         } else {
-          return `x ${todayDate} ${task}`;
+          task.Task = `x ${todayDate} ${task.Task}`;
         }
+      });
       }
 
       // Function to open a popup window with a custom dialog
@@ -487,6 +489,7 @@
         });
       }
 
+/*
   		function setPriorityForSelectedTasks() {
         const htmlContent = `
           <h2>Set Priority</h2>
@@ -506,7 +509,7 @@
           }
         });
       }
-    
+ */   
       function deleteTask(index) {
         const task = allTasks[index];
         const htmlContent = `
@@ -527,6 +530,25 @@
             applyFilters();
           }
         });
+      }
+
+      function changePriority(tasks, increase) {
+      const priorities = ['A', 'B', 'C', 'D'];
+
+      tasks.forEach(task => {
+        if (!task.Task.startsWith('(')) return;
+        
+        const currentPriority = task.Task[1];
+        const currentIndex = priorities.indexOf(currentPriority);
+        
+        if (currentIndex === -1) return;
+        
+        let newIndex = increase ? 
+          Math.max(0, currentIndex - 1) : 
+          Math.min(priorities.length - 1, currentIndex + 1);
+          
+        task.Task = `(${priorities[newIndex]})${task.Task.slice(3)}`;
+      });
       }
 
       function setPriorityForSelectedTasks() {
@@ -615,12 +637,6 @@
         };
       }
 
-      // Function to save all tasks to a text file
-      function saveTasks() {
-        const allTasksText = allTasks.map(task => task.Task).join('\n');
-        google.script.run.saveTasksToFile(allTasksText);
-      }
-
       function getOriginalIndices() {
         const taskList = document.getElementById('taskList');
         const tasks = taskList.getElementsByClassName('task');
@@ -669,21 +685,43 @@
         const tasks = taskList.getElementsByClassName('task');
         if (lastSelectedIndex === -1) return;
 
-        if (event.key === 'ArrowUp' && lastSelectedIndex > 0) {
-          if (event.ctrlKey) {
+        if (event.key === 'ArrowUp') {
+          if (event.ctrlKey && lastSelectedIndex > 0) {
             swapTasks(lastSelectedIndex, lastSelectedIndex - 1);
-          } else {
-            tasks[lastSelectedIndex].classList.remove('selected');
+          } else if (event.altKey) {
+            const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
+            changePriority(selectedTaskObjects, true);
+            applyFilters();
+            const taskList = document.getElementById('taskList');
+            const tasks = taskList.getElementsByClassName('task');
+            selectedTasks.forEach(index => {
+              tasks[index].classList.add('selected');
+            });
+          } else if (lastSelectedIndex > 0){
+            if (!event.shiftKey) {
+              tasks[lastSelectedIndex].classList.remove('selected');
+            }
             lastSelectedIndex--;
             tasks[lastSelectedIndex].classList.add('selected');
             selectedTasks.clear();
             selectedTasks.add(lastSelectedIndex);
           }
-        } else if (event.key === 'ArrowDown' && lastSelectedIndex < tasks.length - 1) {
-          if (event.ctrlKey) {
+        } else if (event.key === 'ArrowDown') {
+          if (event.ctrlKey && lastSelectedIndex < tasks.length - 1) {
             swapTasks(lastSelectedIndex, lastSelectedIndex + 1);
-          } else {
-            tasks[lastSelectedIndex].classList.remove('selected');
+          } else if (event.altKey) {
+            const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
+            changePriority(selectedTaskObjects, false); 
+            applyFilters();
+            const taskList = document.getElementById('taskList');
+            const tasks = taskList.getElementsByClassName('task');
+            selectedTasks.forEach(index => {
+              tasks[index].classList.add('selected');
+            });
+          } else if (lastSelectedIndex < tasks.length - 1) {
+            if (!event.shiftKey) {
+              tasks[lastSelectedIndex].classList.remove('selected');
+            }
             lastSelectedIndex++;
             tasks[lastSelectedIndex].classList.add('selected');
             selectedTasks.clear();
@@ -696,9 +734,14 @@
         } else if (event.key >= '1' && event.key <= '9') {
           loadFilterSet(event.key);
         } else if (event.key === 'x') {
-          const task = allTasks[filteredTasks[lastSelectedIndex].originalIndex];
-          task.Task = toggleCompletion(task.Task);
+          const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
+          toggleCompletion(selectedTaskObjects);
           applyFilters();
+          const taskList = document.getElementById('taskList');
+          const tasks = taskList.getElementsByClassName('task');
+          selectedTasks.forEach(index => {
+            tasks[index].classList.add('selected');
+          });
         } else if (event.key === 'd') {
           event.preventDefault();
           deleteTask(filteredTasks[lastSelectedIndex].originalIndex);
@@ -716,6 +759,25 @@
           postponeSelectedTasks();
         }
       }
+
+      // automatically save waiting for 'saveTimeout' milliseconds
+      let timeoutId;
+      // Function to listen for keyboard input
+      function listenForKeyboardInput() {
+        document.addEventListener('keydown', resetTimer);
+      }
+      // Function to reset the timer
+      function resetTimer() {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(saveTasks, saveTimeout);
+      }
+      // Function to save all tasks to a text file
+      function saveTasks() {
+        const allTasksText = allTasks.map(task => task.Task).join('\n');
+        google.script.run.saveTasksToFile(allTasksText);
+      }
+      // Start listening for keyboard input
+      listenForKeyboardInput();
 
       document.addEventListener('DOMContentLoaded', loadTasks);
       document.addEventListener('keydown', handleKeyDown);

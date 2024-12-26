@@ -1,7 +1,8 @@
 var FILE_ID = '1BAfmjodr1dTtXRFVwzAKGFJ8VHyq3mAv'; // Replace with your actual file ID
 
 function doGet() {
-  return HtmlService.createHtmlOutputFromFile('index');
+  return HtmlService.createHtmlOutputFromFile('index')
+    .setFaviconUrl(`https://drive.google.com/uc?export=download&id=1L6RQug6xKYBAE36KeUvNXJ_f6qMasSbI&format=png`)
 }
 
 function getTasks() {

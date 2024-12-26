@@ -698,6 +698,75 @@
         }
       }
 
+      // automatically save waiting for 'saveTimeout' milliseconds
+      let timeoutId;
+      // Function to listen for keyboard input
+      function listenForKeyboardInput() {
+        document.addEventListener('keydown', resetTimer);
+      }
+      // Function to reset the timer
+      function resetTimer() {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(saveTasks, saveTimeout);
+      }
+
+      function checkFileModified() {
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(function(currentModifiedTime) {
+              if (currentModifiedTime !== lastModifiedTime) {
+                const htmlContent = `
+                  <h2>Warning: File Modified</h2>
+                  <p>The task file has been modified externally since it was last loaded.</p>
+                  <p>Do you want to:</p>
+                  <div class="buttons">
+                    <button class="confirm">Save Anyway</button>
+                    <button class="cancel">Cancel Save</button>
+                  </div>
+                `;
+                showDialog(htmlContent, (confirmed) => {
+                  resolve(confirmed === null ? false : true);
+                });
+              } else {
+                resolve(true);
+              }
+            })
+            .withFailureHandler(function(error) {
+              reject(error);
+            })
+            .getLastModifiedTime();
+        });
+      }
+
+      // Function to save all tasks to a text file
+      async function saveTasks() {
+        try {
+          const canSave = await checkFileModified();
+          if (canSave) {
+            const allTasksText = allTasks.map(task => task.Task).join('\n');
+            google.script.run
+              .withSuccessHandler(function(newModifiedTime) {
+                lastModifiedTime = newModifiedTime;
+                lastSavedTime = newModifiedTime;
+              })
+              .saveTasksToFile(allTasksText);
+          } else {
+            // Optionally reload the file here if user cancels
+            loadTasks();
+          }
+        } catch (error) {
+          const htmlContent = `
+            <h2>Error</h2>
+            <p>Failed to check file status: ${error}</p>
+            <div class="buttons">
+              <button class="confirm">OK</button>
+              <button class="cancel" style="display: none;">Cancel</button>
+            </div>
+          `;
+          showDialog(htmlContent, () => {});
+        }
+      }
+
       function handleKeyDown(event) {
         // Ignore hotkeys if search box is focused or dialog box is open
         if (document.activeElement === document.getElementById('searchBox') || document.getElementById('dialogContainer').innerHTML !== '') {
@@ -803,77 +872,12 @@
         } else if (event.key === 'p') {
           event.preventDefault();
           postponeSelectedTasks();
+        } else if (event.key === '0') {
+          event.preventDefault();
+          clearFilters();
         }
       }
 
-      // automatically save waiting for 'saveTimeout' milliseconds
-      let timeoutId;
-      // Function to listen for keyboard input
-      function listenForKeyboardInput() {
-        document.addEventListener('keydown', resetTimer);
-      }
-      // Function to reset the timer
-      function resetTimer() {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(saveTasks, saveTimeout);
-      }
-
-      function checkFileModified() {
-        return new Promise((resolve, reject) => {
-          google.script.run
-            .withSuccessHandler(function(currentModifiedTime) {
-              if (currentModifiedTime !== lastModifiedTime) {
-                const htmlContent = `
-                  <h2>Warning: File Modified</h2>
-                  <p>The task file has been modified externally since it was last loaded.</p>
-                  <p>Do you want to:</p>
-                  <div class="buttons">
-                    <button class="confirm">Save Anyway</button>
-                    <button class="cancel">Cancel Save</button>
-                  </div>
-                `;
-                showDialog(htmlContent, (confirmed) => {
-                  resolve(confirmed === null ? false : true);
-                });
-              } else {
-                resolve(true);
-              }
-            })
-            .withFailureHandler(function(error) {
-              reject(error);
-            })
-            .getLastModifiedTime();
-        });
-      }
-
-      // Function to save all tasks to a text file
-      async function saveTasks() {
-        try {
-          const canSave = await checkFileModified();
-          if (canSave) {
-            const allTasksText = allTasks.map(task => task.Task).join('\n');
-            google.script.run
-              .withSuccessHandler(function(newModifiedTime) {
-                lastModifiedTime = newModifiedTime;
-                lastSavedTime = newModifiedTime;
-              })
-              .saveTasksToFile(allTasksText);
-          } else {
-            // Optionally reload the file here if user cancels
-            loadTasks();
-          }
-        } catch (error) {
-          const htmlContent = `
-            <h2>Error</h2>
-            <p>Failed to check file status: ${error}</p>
-            <div class="buttons">
-              <button class="confirm">OK</button>
-              <button class="cancel" style="display: none;">Cancel</button>
-            </div>
-          `;
-          showDialog(htmlContent, () => {});
-        }
-      }
       // Start listening for keyboard input
       listenForKeyboardInput();
 

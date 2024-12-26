@@ -112,16 +112,24 @@
     <div id="tagButtons" class="filter-bar"></div>
     <div id="taskList"></div>
     <script>
+      
       let allTasks = [];
+      let lastModifiedTime = null;
+      let lastSavedTime = null;
       let lastSelectedIndex = -1;
       let selectedTasks = new Set();
       let activeTags = new Set();
       let filteredTasks = []; // Add this to track filtered tasks
-
       const saveTimeout = 3000;
 
       function loadTasks() {
-        google.script.run.withSuccessHandler(displayTasks).getTasks();
+        google.script.run
+          .withSuccessHandler(function(result) {
+            lastModifiedTime = result.lastModified;
+            lastSavedTime = result.lastModified;
+            displayTasks(result.tasks);
+          })
+          .getTasksAndModifiedTime();
       }
 
       function displayTasks(tasks) {
@@ -809,10 +817,62 @@
         clearTimeout(timeoutId);
         timeoutId = setTimeout(saveTasks, saveTimeout);
       }
+
+      function checkFileModified() {
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(function(currentModifiedTime) {
+              if (currentModifiedTime !== lastModifiedTime) {
+                const htmlContent = `
+                  <h2>Warning: File Modified</h2>
+                  <p>The task file has been modified externally since it was last loaded.</p>
+                  <p>Do you want to:</p>
+                  <div class="buttons">
+                    <button class="confirm">Save Anyway</button>
+                    <button class="cancel">Cancel Save</button>
+                  </div>
+                `;
+                showDialog(htmlContent, (confirmed) => {
+                  resolve(confirmed === null ? false : true);
+                });
+              } else {
+                resolve(true);
+              }
+            })
+            .withFailureHandler(function(error) {
+              reject(error);
+            })
+            .getLastModifiedTime();
+        });
+      }
+
       // Function to save all tasks to a text file
-      function saveTasks() {
-        const allTasksText = allTasks.map(task => task.Task).join('\n');
-        google.script.run.saveTasksToFile(allTasksText);
+      async function saveTasks() {
+        try {
+          const canSave = await checkFileModified();
+          if (canSave) {
+            const allTasksText = allTasks.map(task => task.Task).join('\n');
+            google.script.run
+              .withSuccessHandler(function(newModifiedTime) {
+                lastModifiedTime = newModifiedTime;
+                lastSavedTime = newModifiedTime;
+              })
+              .saveTasksToFile(allTasksText);
+          } else {
+            // Optionally reload the file here if user cancels
+            loadTasks();
+          }
+        } catch (error) {
+          const htmlContent = `
+            <h2>Error</h2>
+            <p>Failed to check file status: ${error}</p>
+            <div class="buttons">
+              <button class="confirm">OK</button>
+              <button class="cancel" style="display: none;">Cancel</button>
+            </div>
+          `;
+          showDialog(htmlContent, () => {});
+        }
       }
       // Start listening for keyboard input
       listenForKeyboardInput();

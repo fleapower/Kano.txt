@@ -5,6 +5,19 @@ function doGet() {
     .setFaviconUrl(`https://drive.google.com/uc?export=download&id=1L6RQug6xKYBAE36KeUvNXJ_f6qMasSbI&format=png`)
 }
 
+function getLastModifiedTime() {
+  const file = DriveApp.getFileById(FILE_ID);
+  return file.getLastUpdated().getTime();
+}
+
+function getTasksAndModifiedTime() {
+  const file = DriveApp.getFileById(FILE_ID);
+  return {
+    tasks: getTasks(), // Your existing getTasks functionality
+    lastModified: file.getLastUpdated().getTime()
+  };
+}
+
 function getTasks() {
   var file = DriveApp.getFileById(FILE_ID);
   var content = file.getBlob().getDataAsString();
@@ -36,7 +49,8 @@ function loadFilterSet(number) {
   }
 }
 
-function saveTasksToFile(content) {
-  var file = DriveApp.getFileById(FILE_ID);
-  file.setContent(content);
+function saveTasksToFile(tasksText) {
+  const file = DriveApp.getFileById(FILE_ID);
+  file.setContent(tasksText);
+  return file.getLastUpdated().getTime();
 }

@@ -84,12 +84,12 @@
       }
 
       .sidebar-dialog .confirm {
-        background-color: #4CAF50;
+        background-color: gray;
         color: white;
       }
 
       .sidebar-dialog .cancel {
-        background-color: #f44336;
+        background-color: gray;
         color: white;
       }
 
@@ -293,17 +293,10 @@
           .map(index => tasks[index].textContent)
           .join('\n');
 		    navigator.clipboard.writeText(selectedText);
-        const htmlContent = `
-		    	<h2>Copied to clipboard.</h2>
-			    <input type=hidden value="copy">
-          <div class="buttons">
-			    	<button class="confirm">OK</button>
-          </div>
-        `;
-          showDialog(htmlContent, (confirm) => {
-          });
-        };
+      };
 	  
+
+    
       function saveFilterSet(number) {
         const filterSet = {
           dueToday: document.getElementById('dueToday').checked,
@@ -313,10 +306,11 @@
         };
         google.script.run.saveFilterSet(number, filterSet);
         const htmlContent = `
-		    	<h2>Filter set saved.</h2>
+		    	<h2>Filter saved.</h2>
 			    <input type=hidden value="copy">
           <div class="buttons">
-			    	<button class="confirm">OK</button>
+			    	<button class="confirm" autofocus>OK</button>
+            <button class="cancel" style="display: none;">Cancel</button>
           </div>
         `;
         showDialog(htmlContent, (confirm) => {
@@ -610,31 +604,52 @@
         const dialog = dialogContainer.querySelector('.sidebar-dialog');
         setTimeout(() => dialog.classList.add('active'), 10); // Trigger animation
 
-        const input = dialog.querySelector('input, textarea');
-        if (input) {
+        const input = dialog.querySelector('input:not([type="hidden"]), textarea');
+        const confirmButton = dialog.querySelector('.confirm');
+
+        // Focus on input if it exists and is visible, otherwise focus on confirm button
+        if (input && input.type !== 'hidden' && window.getComputedStyle(input).display !== 'none') {
           input.focus();
-          // Add this event listener to stop propagation
           input.addEventListener('keydown', (e) => {
-              e.stopPropagation();
+            e.stopPropagation();
           });
+        } else if (confirmButton) {
+          setTimeout(() => confirmButton.focus(), 50);
         }
+
+        // Add click handler for the dialog container
+        const handleOutsideClick = (e) => {
+          if (!dialog.contains(e.target)) {
+            closeDialog();
+          }
+        };
+
+        const closeDialog = () => {
+          dialog.classList.remove('active');
+          setTimeout(() => {
+            callback(null);
+            dialogContainer.innerHTML = '';
+            document.removeEventListener('click', handleOutsideClick);
+          }, 300);
+        };
 
         dialog.querySelector('.confirm').onclick = () => {
           const input = dialog.querySelector('input, textarea');
           dialog.classList.remove('active');
           setTimeout(() => {
             callback(input.value);
-			      dialogContainer.innerHTML = '';
-          }, 300); // Wait for animation
+            dialogContainer.innerHTML = '';
+            document.removeEventListener('click', handleOutsideClick);
+          }, 300);
         };
 
         dialog.querySelector('.cancel').onclick = () => {
-          dialog.classList.remove('active');
-          setTimeout(() => {
-            callback(null);
-            dialogContainer.innerHTML = '';
-          }, 300); // Wait for animation
+          closeDialog();
         };
+
+        setTimeout(() => {
+          document.addEventListener('click', handleOutsideClick);
+        }, 100);
       }
 
       function getOriginalIndices() {
@@ -676,7 +691,6 @@
       }
 
       function handleKeyDown(event) {
-	  
         // Ignore hotkeys if search box is focused or dialog box is open
         if (document.activeElement === document.getElementById('searchBox') || document.getElementById('dialogContainer').innerHTML !== '') {
           return;
@@ -697,21 +711,33 @@
             selectedTasks.forEach(index => {
               tasks[index].classList.add('selected');
             });
-          } else if (lastSelectedIndex > 0){
-            if (!event.shiftKey) {
-              tasks[lastSelectedIndex].classList.remove('selected');
+          } else if (lastSelectedIndex > 0) {
+            if (event.shiftKey) {
+              // If shift is pressed, toggle selection of the previous task
+              const newIndex = lastSelectedIndex - 1;
+              if (selectedTasks.has(newIndex)) {
+                tasks[lastSelectedIndex].classList.remove('selected');
+                selectedTasks.delete(lastSelectedIndex);
+              } else {
+                tasks[newIndex].classList.add('selected');
+                selectedTasks.add(newIndex);
+              }
+              lastSelectedIndex = newIndex;
+            } else {
+              // If no shift, clear all selections and select only the new task
+              Array.from(tasks).forEach(task => task.classList.remove('selected'));
+              lastSelectedIndex--;
+              tasks[lastSelectedIndex].classList.add('selected');
+              selectedTasks.clear();
+              selectedTasks.add(lastSelectedIndex);
             }
-            lastSelectedIndex--;
-            tasks[lastSelectedIndex].classList.add('selected');
-            selectedTasks.clear();
-            selectedTasks.add(lastSelectedIndex);
           }
         } else if (event.key === 'ArrowDown') {
           if (event.ctrlKey && lastSelectedIndex < tasks.length - 1) {
             swapTasks(lastSelectedIndex, lastSelectedIndex + 1);
           } else if (event.altKey) {
             const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
-            changePriority(selectedTaskObjects, false); 
+            changePriority(selectedTaskObjects, false);
             applyFilters();
             const taskList = document.getElementById('taskList');
             const tasks = taskList.getElementsByClassName('task');
@@ -719,13 +745,25 @@
               tasks[index].classList.add('selected');
             });
           } else if (lastSelectedIndex < tasks.length - 1) {
-            if (!event.shiftKey) {
-              tasks[lastSelectedIndex].classList.remove('selected');
+            if (event.shiftKey) {
+              // If shift is pressed, toggle selection of the next task
+              const newIndex = lastSelectedIndex + 1;
+              if (selectedTasks.has(newIndex)) {
+                tasks[lastSelectedIndex].classList.remove('selected');
+                selectedTasks.delete(lastSelectedIndex);
+              } else {
+                tasks[newIndex].classList.add('selected');
+                selectedTasks.add(newIndex);
+              }
+              lastSelectedIndex = newIndex;
+            } else {
+              // If no shift, clear all selections and select only the new task
+              Array.from(tasks).forEach(task => task.classList.remove('selected'));
+              lastSelectedIndex++;
+              tasks[lastSelectedIndex].classList.add('selected');
+              selectedTasks.clear();
+              selectedTasks.add(lastSelectedIndex);
             }
-            lastSelectedIndex++;
-            tasks[lastSelectedIndex].classList.add('selected');
-            selectedTasks.clear();
-            selectedTasks.add(lastSelectedIndex);
           }
         } else if (event.key === 'c') {
           copySelectedTasks();

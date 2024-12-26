@@ -108,6 +108,7 @@
       </select>
       <button onclick="clearFilters()">Clear Filters</button>
       <button onclick="sortTasksByDueDate()">Sort by Due Date</button>
+      <button onclick="sortTasksByPriority()">Sort by Priority</button>
     </div>
     <div id="tagButtons" class="filter-bar"></div>
     <div id="taskList"></div>
@@ -289,6 +290,22 @@
           const aDate = a.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
           const bDate = b.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
           return (aDate ? new Date(aDate[1]) : new Date(0)) - (bDate ? new Date(bDate[1]) : new Date(0));
+        });
+        applyFilters();
+      }
+
+      function sortTasksByPriority() {
+        allTasks.sort((a, b) => {
+          // Extract priorities (if they exist)
+          const prioA = a.Task.match(/^\((.)\)/);
+          const prioB = b.Task.match(/^\((.)\)/);
+          
+          // Handle cases where one or both tasks don't have priorities
+          if (!prioA && !prioB) return 0;
+          if (!prioA) return 1;
+          if (!prioB) return -1;
+          
+          return prioA[1].localeCompare(prioB[1]);
         });
         applyFilters();
       }
@@ -863,6 +880,9 @@
         } else if (event.key === 'n') {
           event.preventDefault();
           addNewTask();
+        } else if (!event.ctrlKey && event.key === 'r') {
+          event.preventDefault();
+          sortTasksByPriority();
         } else if (event.key === 's') {
           event.preventDefault();
           setDateForSelectedTasks();

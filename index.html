@@ -6,7 +6,11 @@
       body { font-family: Arial, sans-serif; }
       .task { cursor: pointer; padding: 5px; border-bottom: 1px solid #ccc; }
       .selected { background-color: #80EF80; }
-      .filter-bar { position: sticky; top: 0; background: white; padding: 10px; border-bottom: 1px solid #ccc; }
+
+      .header-bar {position: sticky; top: 0; background: white; padding: 10px; border-bottom: 1px solid #ccc;}
+      .filter-bar {background: white; padding: 5px;}
+      .tag-bar {background: white; padding: 5px;}
+
       .tag-button {
         background-color: gray;
         color: white;
@@ -96,21 +100,20 @@
     </style>
   </head>
   <body tabindex="0">
-    <!-- ... existing HTML remains the same ... -->
     <h1>GooDo.txt</h1>
     <div id="dialogContainer"></div>
-    <div class="filter-bar">
-      <input type="checkbox" id="dueToday" onclick="applyFilters()"> Due Today
-      <input type="text" id="searchBox" placeholder="Search..." oninput="applyFilters()">
-      <select id="priorityFilter" onchange="applyFilters()">
-        <option value="all">All</option>
-        <!-- Dynamically populated priorities -->
-      </select>
-      <button onclick="clearFilters()">Clear Filters</button>
-      <button onclick="sortTasksByDueDate()">Sort by Due Date</button>
-      <button onclick="sortTasksByPriority()">Sort by Priority</button>
+    <div id="headerContainer" class="header-bar">
+      <div class="filter-bar">
+        <button id="dueButton" onclick="cycleDueState()">All Dates</button>
+        <button id="priorityButton" onclick="cyclePriorityState()">All Pri</button>
+        <button onclick="clearFilters()">Clear Filters</button>
+        <button onclick="sortTasksByDueDate()">Sort by Due Date</button>
+        <button onclick="sortTasksByPriority()">Sort by Priority</button>
+        <input type="text" id="searchBox" placeholder="Search..." oninput="applyFilters()">
+      </div>
+      <div id="tagButtons" class="tag-bar">
+      </div>
     </div>
-    <div id="tagButtons" class="filter-bar"></div>
     <div id="taskList"></div>
     <script>
       
@@ -120,8 +123,25 @@
       let lastSelectedIndex = -1;
       let selectedTasks = new Set();
       let activeTags = new Set();
-      let filteredTasks = []; // Add this to track filtered tasks
-      const saveTimeout = 3000;
+      let filteredTasks = [];
+      let dueState = "All Dates";
+      let priorityState = "All Pri";
+
+      const saveTimeout = 3000; // You can increase this if you are getting an error that too many scripts are running on your account.  This is in milliseconds.
+
+      function cyclePriorityState() {
+        const states = ["All Pri", "(A)", "(B)", "(C)", "(D)"];
+        priorityState = states[(states.indexOf(priorityState) + 1) % states.length];
+        document.getElementById('priorityButton').textContent = priorityState;
+        applyFilters();
+      }
+
+      function cycleDueState() {
+        const states = ["All Dates", "Due Today", "Due Tomorrow"];
+        dueState = states[(states.indexOf(dueState) + 1) % 3];
+        document.getElementById('dueButton').textContent = dueState;
+        applyFilters();
+      }
 
       function loadTasks() {
         google.script.run
@@ -135,28 +155,8 @@
 
       function displayTasks(tasks) {
         allTasks = tasks;
-        populatePriorityFilter();
         generateTagButtons();
         applyFilters();
-      }
-
-      function populatePriorityFilter() {
-        const priorityFilter = document.getElementById('priorityFilter');
-        const priorities = new Set();
-        allTasks.forEach(task => {
-          const match = task.Task.match(/^\((.)\)/);
-          if (match) {
-            priorities.add(match[0]);
-          } else if (task.Task.startsWith('x')) {
-            priorities.add('x');
-          }
-        });
-        Array.from(priorities).sort().forEach(priority => {
-          const option = document.createElement('option');
-          option.value = priority;
-          option.textContent = priority;
-          priorityFilter.appendChild(option);
-        });
       }
 
       function generateTagButtons() {
@@ -204,29 +204,30 @@
       // ... keep all existing functions the same until applyFilters ...
 
       function applyFilters() {
-        const dueToday = document.getElementById('dueToday').checked;
         const searchQuery = document.getElementById('searchBox').value.toLowerCase();
-        const priorityFilter = document.getElementById('priorityFilter').value;
         const taskList = document.getElementById('taskList');
         taskList.innerHTML = '';
         
-        // Store filtered tasks with their original indices
         filteredTasks = allTasks
           .map((task, originalIndex) => ({ task, originalIndex }))
           .filter(({ task }) => {
             const taskText = task.Task;
-            const dueDate = taskText.substring(taskText.indexOf('due:') + 4, taskText.indexOf('due:') + 14);
+            const dueDate = taskText.match(/due:(\d{4}-\d{2}-\d{2})/)?.[1] || '';
             const today = getTodayDate();
-            const matchesDueToday = !dueToday || (dueDate <= today);
+            const tomorrow = getTomorrowDate();
+            
+            const matchesDue = dueState === "All Dates" || 
+              (dueState === "Due Today" && dueDate === today) ||
+              (dueState === "Due Tomorrow" && dueDate === tomorrow);
+            
+            const matchesPriority = priorityState === "All Pri" || taskText.startsWith(priorityState);
             const matchesSearch = taskText.toLowerCase().includes(searchQuery);
-            const matchesPriority = priorityFilter === 'all' || taskText.startsWith(priorityFilter);
             const matchesTags = Array.from(activeTags).length === 0 || Array.from(activeTags).some(tag => {
-              if (tag === 'No Lists') {
-                return !taskText.match(/ @\w+/);
-              }
+              if (tag === 'No Lists') return !taskText.match(/ @\w+/);
               return taskText.includes(tag);
             });
-            return matchesDueToday && matchesSearch && matchesPriority && matchesTags;
+            
+            return matchesDue && matchesSearch && matchesPriority && matchesTags;
           });
 
         filteredTasks.forEach(({ task, originalIndex }, filteredIndex) => {
@@ -272,11 +273,11 @@
       }
 
       function clearFilters() {
-        document.getElementById('dueToday').checked = false;
+        dueState = "All Dates";
+        priorityState = "All Pri";
+        document.getElementById('dueButton').textContent = "All Dates";
+        document.getElementById('priorityButton').textContent = "All Pri";
         document.getElementById('searchBox').value = '';
-        document.getElementById('priorityFilter').value = 'all';
-    
-        // Reset tag buttons visual state
         const tagButtons = document.getElementsByClassName('tag-button');
         Array.from(tagButtons).forEach(button => {
           button.classList.remove('selected');
@@ -319,27 +320,22 @@
           .join('');
 		    navigator.clipboard.writeText(selectedText);
       };
-	  
-
     
       function saveFilterSet(number) {
         const filterSet = {
-          dueToday: document.getElementById('dueToday').checked,
+          dueState: dueState,
+          priorityState: priorityState,
           searchQuery: document.getElementById('searchBox').value,
-          priorityFilter: document.getElementById('priorityFilter').value,
           activeTags: Array.from(activeTags)
         };
         google.script.run.saveFilterSet(number, filterSet);
         const htmlContent = `
-		    	<h2>Filter saved.</h2>
-			    <input type=hidden value="copy">
+          <h2>Filter set saved.</h2>
           <div class="buttons">
-			    	<button class="confirm" autofocus>OK</button>
-            <button class="cancel" style="display: none;">Cancel</button>
+            <button class="confirm">OK</button>
           </div>
         `;
-        showDialog(htmlContent, (confirm) => {
-        });
+        showDialog(htmlContent);
       }
 
       function loadFilterSet(number) {
@@ -347,10 +343,11 @@
       }
 
       function applyLoadedFilterSet(filterSet) {
-
-        document.getElementById('dueToday').checked = filterSet.dueToday;
+        dueState = filterSet.dueState || "All Dates";
+        priorityState = filterSet.priorityState || "All Pri";
+        document.getElementById('dueButton').textContent = dueState;
+        document.getElementById('priorityButton').textContent = priorityState;
         document.getElementById('searchBox').value = filterSet.searchQuery;
-        document.getElementById('priorityFilter').value = filterSet.priorityFilter;
         activeTags = new Set(filterSet.activeTags);
         applyFilters();
       }
@@ -449,8 +446,6 @@
           popup.close();
         };
       }
-	  
-      // Function to edit a task
 
       function editTask(index) {
         const task = allTasks[index];
@@ -508,27 +503,6 @@
         });
       }
 
-/*
-  		function setPriorityForSelectedTasks() {
-        const htmlContent = `
-          <h2>Set Priority</h2>
-          <input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
-          <div class="buttons">
-            <button class="confirm">Set Priority</button>
-            <button class="cancel">Cancel</button>
-          </div>
-        `;
-        showDialog(htmlContent, (newPriority) => {
-          if (newPriority) {
-            const originalIndices = getOriginalIndices();
-            originalIndices.forEach(index => {
-              allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
-            });
-            applyFilters();
-          }
-        });
-      }
- */   
       function deleteTask(index) {
         const task = allTasks[index];
         const htmlContent = `
@@ -877,6 +851,13 @@
         } else if (event.key === 'd') {
           event.preventDefault();
           deleteTask(filteredTasks[lastSelectedIndex].originalIndex);
+        } else if (event.ctrlKey && event.key === 'f') {
+          event.preventDefault();
+          document.getElementById('searchBox').focus();
+          return;
+        } else if (event.key === 'e') {
+          event.preventDefault();
+          cyclePriorityState();
         } else if (event.key === 'n') {
           event.preventDefault();
           addNewTask();
@@ -895,6 +876,9 @@
         } else if (event.key === 'p') {
           event.preventDefault();
           postponeSelectedTasks();
+        } else if (event.key === 'u') {
+          event.preventDefault();
+          cycleDueState();
         } else if (event.key === '0') {
           event.preventDefault();
           clearFilters();

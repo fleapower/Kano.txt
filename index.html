@@ -41,7 +41,7 @@
       .context {
         font-size: smaller;
       }
-      .completed-task {
+      .complete-task {
         text-decoration: line-through;
       }
       .overdue-task {
@@ -111,7 +111,7 @@
     <div id="dialogContainer"></div>
     <div id="headerContainer" class="header-bar">
       <div class="filter-bar">
-        <button id="completedButton" onclick="cycleCompletedState()">All States</button>
+        <button id="completeButton" onclick="cycleCompleteState()">All States</button>
         <button id="dueButton" onclick="cycleDueState()">All Dates</button>
         <button id="priorityButton" onclick="cyclePriorityState()">All Pri</button>
         <button onclick="clearFilters()">Clear Filters</button>
@@ -134,7 +134,7 @@
       let filteredTasks = [];
       let dueState = "All Dates";
       let priorityState = "All Pri";
-      let completedState = "All States";  // Can be "All States", "Completed", or "Uncompleted"
+      let completeState = "All States";  // Can be "All States", "Complete", or "Pending"
 
       const saveTimeout = 3000; // You can increase this if you are getting an error that too many scripts are running on your account.  This is in milliseconds.
 
@@ -145,10 +145,10 @@
         applyFilters();
       }
 
-      function cycleCompletedState() {
-        const states = ["All States", "Completed", "Uncompleted"];
-        completedState = states[(states.indexOf(completedState) + 1) % 3];
-        document.getElementById('completedButton').textContent = completedState;
+      function cycleCompleteState() {
+        const states = ["All States", "Complete", "Pending"];
+        completeState = states[(states.indexOf(completeState) + 1) % 3];
+        document.getElementById('completeButton').textContent = completeState;
         applyFilters();
       }
 
@@ -239,15 +239,15 @@
             const dueDate = taskText.match(/due:(\d{4}-\d{2}-\d{2})/)?.[1] || '';
             const today = getTodayDate();
             const tomorrow = getTomorrowDate();
-            const isCompleted = taskText.startsWith('x ');
+            const isComplete = taskText.startsWith('x ');
             
             const matchesDue = dueState === "All Dates" || 
               (dueState === "Due Today" && dueDate === today) ||
               (dueState === "Due Tomorrow" && dueDate === tomorrow);
             
-            const matchesCompleted = completedState === "All States" ||
-              (completedState === "Completed" && isCompleted) ||
-              (completedState === "Uncompleted" && !isCompleted);
+            const matchesComplete = completeState === "All States" ||
+              (completeState === "Complete" && isComplete) ||
+              (completeState === "Pending" && !isComplete);
             
             const matchesPriority = priorityState === "All Pri" || taskText.startsWith(priorityState);
             const matchesSearch = taskText.toLowerCase().includes(searchQuery);
@@ -256,7 +256,7 @@
               return taskText.includes(context);
             });
             
-            return matchesDue && matchesCompleted && matchesSearch && matchesPriority && matchesContexts;
+            return matchesDue && matchesComplete && matchesSearch && matchesPriority && matchesContexts;
           });
 
         filteredTasks.forEach(({ task, originalIndex }, filteredIndex) => {
@@ -285,7 +285,7 @@
           }
 
           if (task.Task.startsWith('x ')) {
-            taskText = `<span class="completed-task">${taskText}</span>`;
+            taskText = `<span class="complete-task">${taskText}</span>`;
           }
 
           div.innerHTML = taskText;
@@ -340,7 +340,7 @@
         const filterSet = {
           dueState: dueState,
           priorityState: priorityState,
-          completedState: completedState,
+          completeState: completeState,
           searchQuery: document.getElementById('searchBox').value,
           activeContexts: Array.from(activeContexts)
         };
@@ -371,12 +371,12 @@
         clearFilters();
         dueState = filterSet.dueState || "All Dates";
         priorityState = filterSet.priorityState || "All Pri";
-        completedState = filterSet.completedState || "All States";
+        completeState = filterSet.completeState || "All States";
         activeContexts = new Set(filterSet.activeContexts);
         
         document.getElementById('dueButton').textContent = dueState;
         document.getElementById('priorityButton').textContent = priorityState;
-        document.getElementById('completedButton').textContent = completedState;
+        document.getElementById('completeButton').textContent = completeState;
         document.getElementById('searchBox').value = filterSet.searchQuery;
         
         applyFilters();
@@ -385,10 +385,10 @@
       function clearFilters() {
         dueState = "All Dates";
         priorityState = "All Pri";
-        completedState = "All States";
+        completeState = "All States";
         document.getElementById('dueButton').textContent = "All Dates";
         document.getElementById('priorityButton').textContent = "All Pri";
-        document.getElementById('completedButton').textContent = "All States";
+        document.getElementById('completeButton').textContent = "All States";
         document.getElementById('searchBox').value = '';
         const contextButtons = document.getElementsByClassName('context-button');
         Array.from(contextButtons).forEach(button => {
@@ -910,7 +910,7 @@
         } else if (event.key === 'c' && event.ctrlKey) {
           copySelectedTasks();
         } else if (event.key === 'c' && !event.ctrlKey) {
-          cycleCompletedState();
+          cycleCompleteState();
         } else if (event.ctrlKey && event.altKey && event.key >= '1' && event.key <= '9') {
           saveFilterSet(event.key);
         } else if (event.key >= '1' && event.key <= '9') {

@@ -18,8 +18,8 @@
       }
 
       .context-button:focus {
-        background: white;
-        color: black;
+        border: 2px solid white;
+        outline: 2px solid green;
       }
 
       .context-button.selected {
@@ -412,24 +412,59 @@
         allTasks[originalIndex1].TaskID = originalIndex1;
         allTasks[originalIndex2].TaskID = originalIndex2;
 
-        // Reapply filters to update the display
-        applyFilters();
-
-        // Update selection to follow the moved task
+        // Instead of rebuilding everything, directly swap the DOM elements
         const taskList = document.getElementById('taskList');
         const tasks = taskList.getElementsByClassName('task');
-        Array.from(tasks).forEach(task => task.classList.remove('selected'));
+        const task1 = tasks[filteredIndex1];
+        const task2 = tasks[filteredIndex2];
         
-        // Find the new filtered index of the moved task
-        const newFilteredIndex = filteredTasks.findIndex(t => t.originalIndex === originalIndex2);
-        if (newFilteredIndex !== -1) {
-          tasks[newFilteredIndex].classList.add('selected');
-          selectedTasks.clear();
-          selectedTasks.add(newFilteredIndex);
-          lastSelectedIndex = newFilteredIndex;
-        }
-      }
+        // Cache the task height before any DOM changes
+        const taskHeight = task1.offsetHeight;
+        
+        // Create a temporary marker for task2's position
+        const temp = document.createElement('div');
+        task2.parentNode.insertBefore(temp, task2);
+        
+        // Perform the DOM swap
+        task1.parentNode.insertBefore(task2, task1);
+        temp.parentNode.insertBefore(task1, temp);
+        temp.parentNode.removeChild(temp);
+        
+        // Update selection - keep the original selected task highlighted as it moves
+        Array.from(tasks).forEach(task => task.classList.remove('selected'));
+        task1.classList.add('selected');  // Highlight task1 which has moved to filteredIndex2
+        selectedTasks.clear();
+        selectedTasks.add(filteredIndex2);
+        lastSelectedIndex = filteredIndex2;
 
+        // Update filteredTasks array to match DOM
+        filteredTasks[filteredIndex1] = { task: allTasks[originalIndex1], originalIndex: originalIndex1 };
+        filteredTasks[filteredIndex2] = { task: allTasks[originalIndex2], originalIndex: originalIndex2 };
+        
+        // Calculate scroll position based on cached task height
+        const rect = task1.getBoundingClientRect();  // Use task1's position since it's the one we're following
+        const tasksFromTop = Math.floor(rect.top / taskHeight);
+        const tasksFromBottom = Math.floor((window.innerHeight - rect.bottom) / taskHeight);
+        
+        // Only scroll if necessary
+        if (tasksFromTop < 5) {
+          window.scrollBy({
+            top: -((5 - tasksFromTop) * taskHeight),
+            behavior: 'instant'
+          });
+        } else if (tasksFromBottom < 5) {
+          window.scrollBy({
+            top: ((5 - tasksFromBottom) * taskHeight),
+            behavior: 'instant'
+          });
+        }
+        
+        // Debounce the full refresh to run after user stops moving tasks
+        clearTimeout(window.refreshTimeout);
+        window.refreshTimeout = setTimeout(() => {
+          applyFilters();
+        }, 500);
+      }
 
       // Function to get today's date in user's local time zone in YYYY-MM-DD format
       function getTodayDate() {

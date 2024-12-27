@@ -104,6 +104,7 @@
     <div id="dialogContainer"></div>
     <div id="headerContainer" class="header-bar">
       <div class="filter-bar">
+        <button id="completedButton" onclick="cycleCompletedState()">All States</button>
         <button id="dueButton" onclick="cycleDueState()">All Dates</button>
         <button id="priorityButton" onclick="cyclePriorityState()">All Pri</button>
         <button onclick="clearFilters()">Clear Filters</button>
@@ -126,6 +127,7 @@
       let filteredTasks = [];
       let dueState = "All Dates";
       let priorityState = "All Pri";
+      let completedState = "All States";  // Can be "All States", "Completed", or "Uncompleted"
 
       const saveTimeout = 3000; // You can increase this if you are getting an error that too many scripts are running on your account.  This is in milliseconds.
 
@@ -136,11 +138,26 @@
         applyFilters();
       }
 
+      function cycleCompletedState() {
+        const states = ["All States", "Completed", "Uncompleted"];
+        completedState = states[(states.indexOf(completedState) + 1) % 3];
+        document.getElementById('completedButton').textContent = completedState;
+        applyFilters();
+      }
+
       function cycleDueState() {
         const states = ["All Dates", "Due Today", "Due Tomorrow"];
         dueState = states[(states.indexOf(dueState) + 1) % 3];
         document.getElementById('dueButton').textContent = dueState;
         applyFilters();
+      }
+
+      function loadAllFilterSets() {
+        google.script.run
+          .withSuccessHandler(function(filterSets) {
+            allFilterSets = filterSets || {};
+          })
+          .getAllFilterSets();
       }
 
       function loadTasks() {
@@ -215,10 +232,15 @@
             const dueDate = taskText.match(/due:(\d{4}-\d{2}-\d{2})/)?.[1] || '';
             const today = getTodayDate();
             const tomorrow = getTomorrowDate();
+            const isCompleted = taskText.startsWith('x ');
             
             const matchesDue = dueState === "All Dates" || 
               (dueState === "Due Today" && dueDate === today) ||
               (dueState === "Due Tomorrow" && dueDate === tomorrow);
+            
+            const matchesCompleted = completedState === "All States" ||
+              (completedState === "Completed" && isCompleted) ||
+              (completedState === "Uncompleted" && !isCompleted);
             
             const matchesPriority = priorityState === "All Pri" || taskText.startsWith(priorityState);
             const matchesSearch = taskText.toLowerCase().includes(searchQuery);
@@ -227,7 +249,7 @@
               return taskText.includes(tag);
             });
             
-            return matchesDue && matchesSearch && matchesPriority && matchesTags;
+            return matchesDue && matchesCompleted && matchesSearch && matchesPriority && matchesTags;
           });
 
         filteredTasks.forEach(({ task, originalIndex }, filteredIndex) => {
@@ -275,8 +297,10 @@
       function clearFilters() {
         dueState = "All Dates";
         priorityState = "All Pri";
+        completedState = "All States";
         document.getElementById('dueButton').textContent = "All Dates";
         document.getElementById('priorityButton').textContent = "All Pri";
+        document.getElementById('completedButton').textContent = "All States";
         document.getElementById('searchBox').value = '';
         const tagButtons = document.getElementsByClassName('tag-button');
         Array.from(tagButtons).forEach(button => {
@@ -325,30 +349,44 @@
         const filterSet = {
           dueState: dueState,
           priorityState: priorityState,
+          completedState: completedState,
           searchQuery: document.getElementById('searchBox').value,
           activeTags: Array.from(activeTags)
         };
-        google.script.run.saveFilterSet(number, filterSet);
+        allFilterSets[number] = filterSet;  // Save to memory
+        
+        // Save all filter sets to a single file
+        google.script.run.saveAllFilterSets(allFilterSets);
+        
         const htmlContent = `
           <h2>Filter set saved.</h2>
+          <input type="hidden" value="copy">
           <div class="buttons">
-            <button class="confirm">OK</button>
+            <button class="confirm" autofocus>OK</button>
+            <button class="cancel" style="display: none;">Cancel</button>
           </div>
         `;
-        showDialog(htmlContent);
+        showDialog(htmlContent, () => {});
       }
 
       function loadFilterSet(number) {
-        google.script.run.withSuccessHandler(applyLoadedFilterSet).loadFilterSet(number);
+        const filterSet = allFilterSets[number];
+        if (filterSet) {
+          applyLoadedFilterSet(filterSet);
+        }
       }
 
       function applyLoadedFilterSet(filterSet) {
         dueState = filterSet.dueState || "All Dates";
         priorityState = filterSet.priorityState || "All Pri";
+        completedState = filterSet.completedState || "All States";
+        activeTags = new Set(filterSet.activeTags);
+        
         document.getElementById('dueButton').textContent = dueState;
         document.getElementById('priorityButton').textContent = priorityState;
+        document.getElementById('completedButton').textContent = completedState;
         document.getElementById('searchBox').value = filterSet.searchQuery;
-        activeTags = new Set(filterSet.activeTags);
+        
         applyFilters();
       }
 
@@ -767,74 +805,102 @@
         const tasks = taskList.getElementsByClassName('task');
         if (lastSelectedIndex === -1) return;
 
-        if (event.key === 'ArrowUp') {
-          if (event.ctrlKey && lastSelectedIndex > 0) {
-            swapTasks(lastSelectedIndex, lastSelectedIndex - 1);
-          } else if (event.altKey) {
-            const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
-            changePriority(selectedTaskObjects, true);
-            applyFilters();
-            const taskList = document.getElementById('taskList');
-            const tasks = taskList.getElementsByClassName('task');
-            selectedTasks.forEach(index => {
-              tasks[index].classList.add('selected');
-            });
-          } else if (lastSelectedIndex > 0) {
-            if (event.shiftKey) {
-              // If shift is pressed, toggle selection of the previous task
-              const newIndex = lastSelectedIndex - 1;
-              if (selectedTasks.has(newIndex)) {
-                tasks[lastSelectedIndex].classList.remove('selected');
-                selectedTasks.delete(lastSelectedIndex);
-              } else {
-                tasks[newIndex].classList.add('selected');
-                selectedTasks.add(newIndex);
-              }
-              lastSelectedIndex = newIndex;
-            } else {
-              // If no shift, clear all selections and select only the new task
-              Array.from(tasks).forEach(task => task.classList.remove('selected'));
-              lastSelectedIndex--;
-              tasks[lastSelectedIndex].classList.add('selected');
-              selectedTasks.clear();
-              selectedTasks.add(lastSelectedIndex);
+        if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+          const taskList = document.getElementById('taskList');
+          const tasks = taskList.getElementsByClassName('task');
+          const selectedTask = tasks[lastSelectedIndex];
+          
+          if (selectedTask) {
+            const rect = selectedTask.getBoundingClientRect();
+            const viewHeight = window.innerHeight;
+            
+            // Get distance from top/bottom of viewport in number of tasks
+            const tasksFromTop = Math.floor(rect.top / rect.height);
+            const tasksFromBottom = Math.floor((viewHeight - rect.bottom) / rect.height);
+            
+            // Only prevent default scrolling if we're not near the edges
+            if (event.key === 'ArrowUp' && tasksFromTop > 5 || 
+                event.key === 'ArrowDown' && tasksFromBottom > 5) {
+              event.preventDefault();
             }
           }
-        } else if (event.key === 'ArrowDown') {
-          if (event.ctrlKey && lastSelectedIndex < tasks.length - 1) {
-            swapTasks(lastSelectedIndex, lastSelectedIndex + 1);
-          } else if (event.altKey) {
-            const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
-            changePriority(selectedTaskObjects, false);
-            applyFilters();
-            const taskList = document.getElementById('taskList');
-            const tasks = taskList.getElementsByClassName('task');
-            selectedTasks.forEach(index => {
-              tasks[index].classList.add('selected');
-            });
-          } else if (lastSelectedIndex < tasks.length - 1) {
-            if (event.shiftKey) {
-              // If shift is pressed, toggle selection of the next task
-              const newIndex = lastSelectedIndex + 1;
-              if (selectedTasks.has(newIndex)) {
-                tasks[lastSelectedIndex].classList.remove('selected');
-                selectedTasks.delete(lastSelectedIndex);
+
+          if (event.key === 'ArrowUp') {
+            if (event.ctrlKey && lastSelectedIndex > 0) {
+              swapTasks(lastSelectedIndex, lastSelectedIndex - 1);
+            } else if (event.altKey) {
+              const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
+              changePriority(selectedTaskObjects, true);
+              applyFilters();
+              const taskList = document.getElementById('taskList');
+              const tasks = taskList.getElementsByClassName('task');
+              selectedTasks.forEach(index => {
+                tasks[index].classList.add('selected');
+              });
+            } else if (lastSelectedIndex > 0) {
+              if (event.shiftKey) {
+                // If shift is pressed, toggle selection of the previous task
+                const newIndex = lastSelectedIndex - 1;
+                if (selectedTasks.has(newIndex)) {
+                  tasks[lastSelectedIndex].classList.remove('selected');
+                  selectedTasks.delete(lastSelectedIndex);
+                } else {
+                  tasks[newIndex].classList.add('selected');
+                  selectedTasks.add(newIndex);
+                }
+                lastSelectedIndex = newIndex;
               } else {
-                tasks[newIndex].classList.add('selected');
-                selectedTasks.add(newIndex);
+                // If no shift, clear all selections and select only the new task
+                Array.from(tasks).forEach(task => task.classList.remove('selected'));
+                lastSelectedIndex--;
+                tasks[lastSelectedIndex].classList.add('selected');
+                selectedTasks.clear();
+                selectedTasks.add(lastSelectedIndex);
               }
-              lastSelectedIndex = newIndex;
-            } else {
-              // If no shift, clear all selections and select only the new task
-              Array.from(tasks).forEach(task => task.classList.remove('selected'));
-              lastSelectedIndex++;
-              tasks[lastSelectedIndex].classList.add('selected');
-              selectedTasks.clear();
-              selectedTasks.add(lastSelectedIndex);
+            }
+          } else if (event.key === 'ArrowDown') {
+            if (event.ctrlKey && lastSelectedIndex < tasks.length - 1) {
+              swapTasks(lastSelectedIndex, lastSelectedIndex + 1);
+            } else if (event.altKey) {
+              const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
+              changePriority(selectedTaskObjects, false);
+              applyFilters();
+              const taskList = document.getElementById('taskList');
+              const tasks = taskList.getElementsByClassName('task');
+              selectedTasks.forEach(index => {
+                tasks[index].classList.add('selected');
+              });
+            } else if (lastSelectedIndex < tasks.length - 1) {
+              if (event.shiftKey) {
+                // If shift is pressed, toggle selection of the next task
+                const newIndex = lastSelectedIndex + 1;
+                if (selectedTasks.has(newIndex)) {
+                  tasks[lastSelectedIndex].classList.remove('selected');
+                  selectedTasks.delete(lastSelectedIndex);
+                } else {
+                  tasks[newIndex].classList.add('selected');
+                  selectedTasks.add(newIndex);
+                }
+                lastSelectedIndex = newIndex;
+              } else {
+                // If no shift, clear all selections and select only the new task
+                Array.from(tasks).forEach(task => task.classList.remove('selected'));
+                lastSelectedIndex++;
+                tasks[lastSelectedIndex].classList.add('selected');
+                selectedTasks.clear();
+                selectedTasks.add(lastSelectedIndex);
+              }
             }
           }
-        } else if (event.key === 'c') {
+/*
+        } else if (event.key === 'Enter') {
+          event.preventDefault();
+          editTask(0);
+*/
+        } else if (event.key === 'c' && event.ctrlKey) {
           copySelectedTasks();
+        } else if (event.key === 'c' && !event.ctrlKey) {
+          cycleCompletedState();
         } else if (event.ctrlKey && event.altKey && event.key >= '1' && event.key <= '9') {
           saveFilterSet(event.key);
         } else if (event.key >= '1' && event.key <= '9') {
@@ -855,7 +921,7 @@
           event.preventDefault();
           document.getElementById('searchBox').focus();
           return;
-        } else if (event.key === 'e') {
+        } else if (event.key === 'q') {
           event.preventDefault();
           cyclePriorityState();
         } else if (event.key === 'n') {
@@ -888,7 +954,10 @@
       // Start listening for keyboard input
       listenForKeyboardInput();
 
-      document.addEventListener('DOMContentLoaded', loadTasks);
+      document.addEventListener('DOMContentLoaded', function() {
+        loadTasks();
+        loadAllFilterSets();
+      });
       document.addEventListener('keydown', handleKeyDown);
 	  
 	    // Add this line to focus the page on load

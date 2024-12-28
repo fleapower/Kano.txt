@@ -188,9 +188,18 @@
       }
 
       function displayTasks(tasks) {
-        allTasks = tasks;
-        generateContextButtons();
-        applyFilters();
+      allTasks = tasks;
+      generateContextButtons();
+      applyFilters();
+      updateTaskCount();
+      }
+
+      function updateTaskCount() {
+      const taskList = document.getElementById('taskList');
+      const counter = document.createElement('div');
+      counter.style.cssText = 'position: fixed; bottom: 10px; right: 10px; padding: 5px; border: 1px solid #ccc; background: white;';
+      counter.textContent = `${filteredTasks.length}/${allTasks.length}`;
+      taskList.appendChild(counter);
       }
 
       function generateContextButtons() {
@@ -309,6 +318,8 @@
           div.innerHTML = taskText;
           taskList.appendChild(div);
         });
+
+        updateTaskCount();
 
         // Auto-select first task if nothing is selected
         if (lastSelectedIndex === -1 && taskList.children.length > 0) {

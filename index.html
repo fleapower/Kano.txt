@@ -1020,6 +1020,8 @@
           saveFilterSet(event.key);
         } else if (event.key >= '1' && event.key <= '9') {
           loadFilterSet(event.key);
+        } else if (event.key === '(') {
+          addNewTask();
         } else if (event.key === 'x') {
           const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
           toggleCompletion(selectedTaskObjects);
@@ -1032,15 +1034,14 @@
         } else if (event.key === 'd') {
           event.preventDefault();
           deleteTask(filteredTasks[lastSelectedIndex].originalIndex);
-        } else if (event.ctrlKey && event.key === 'f') {
+        } else if (event.key === 'f') {
           event.preventDefault();
           document.getElementById('searchBox').focus();
           return;
         } else if (event.key === 'q') {
           event.preventDefault();
           cyclePriorityState();
-        } else if (event.key === 'n') {
-          event.preventDefault();
+        } else if (event.key === '(') {
           addNewTask();
         } else if (!event.ctrlKey && event.key === 'r') {
           event.preventDefault();

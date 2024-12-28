@@ -118,6 +118,7 @@
         <button onclick="sortTasksByDueDate()">Sort by Due Date</button>
         <button onclick="sortTasksByPriority()">Sort by Priority</button>
         <input type="text" id="searchBox" placeholder="Search..." oninput="applyFilters()">
+        <button onclick="clearFileId()">Clear File ID</button>
       </div>
       <div id="contextButtons" class="context-bar">
       </div>
@@ -137,6 +138,14 @@
       let completeState = "All States";  // Can be "All States", "Complete", or "Pending"
 
       const saveTimeout = 3000; // You can increase this if you are getting an error that too many scripts are running on your account.  This is in milliseconds.
+
+      function clearFileId() {
+        google.script.run
+          .withSuccessHandler(function() {
+            window.top.location.reload();
+          })
+          .clearStoredFileId();
+      }
 
       function cyclePriorityState() {
         const states = ["All Pri", "(A)", "(B)", "(C)", "(D)"];
@@ -432,7 +441,7 @@
         
         // Update selection - keep the original selected task highlighted as it moves
         Array.from(tasks).forEach(task => task.classList.remove('selected'));
-        task1.classList.add('selected');  // Highlight task1 which has moved to filteredIndex2
+        task1.classList.add('selected');
         selectedTasks.clear();
         selectedTasks.add(filteredIndex2);
         lastSelectedIndex = filteredIndex2;
@@ -442,7 +451,7 @@
         filteredTasks[filteredIndex2] = { task: allTasks[originalIndex2], originalIndex: originalIndex2 };
         
         // Calculate scroll position based on cached task height
-        const rect = task1.getBoundingClientRect();  // Use task1's position since it's the one we're following
+        const rect = task1.getBoundingClientRect();
         const tasksFromTop = Math.floor(rect.top / taskHeight);
         const tasksFromBottom = Math.floor((window.innerHeight - rect.bottom) / taskHeight);
         
@@ -459,10 +468,25 @@
           });
         }
         
+        // Store the task text that should remain selected after refresh
+        const selectedTaskText = task1.textContent;
+        
         // Debounce the full refresh to run after user stops moving tasks
         clearTimeout(window.refreshTimeout);
         window.refreshTimeout = setTimeout(() => {
           applyFilters();
+          // After refresh, find and reselect the task
+          const newTaskList = document.getElementById('taskList');
+          const newTasks = newTaskList.getElementsByClassName('task');
+          for (let i = 0; i < newTasks.length; i++) {
+            if (newTasks[i].textContent === selectedTaskText) {
+              newTasks[i].classList.add('selected');
+              selectedTasks.clear();
+              selectedTasks.add(i);
+              lastSelectedIndex = i;
+              break;
+            }
+          }
         }, 500);
       }
 

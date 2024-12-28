@@ -989,6 +989,14 @@
             const originalIndex = parseInt(selectedTask.dataset.originalIndex);
             editTask(originalIndex);
           }
+        } else if (event.ctrlKey && event.key === 'a') {
+          event.preventDefault();
+          const tasks = document.getElementsByClassName('task');
+          Array.from(tasks).forEach((task, index) => {
+            task.classList.add('selected');
+            selectedTasks.add(index);
+          });
+          lastSelectedIndex = tasks.length - 1;
         } else if (event.key === 'c' && event.ctrlKey) {
           copySelectedTasks();
         } else if (event.key === 'c' && !event.ctrlKey) {
@@ -1047,9 +1055,24 @@
       listenForKeyboardInput();
 
       document.addEventListener('DOMContentLoaded', function() {
-        loadTasks();
-        loadAllFilterSets();
+        google.script.run
+          .withSuccessHandler(function(result) {
+            lastModifiedTime = result.lastModified;
+            lastSavedTime = result.lastModified;
+            displayTasks(result.tasks);
+            
+            google.script.run
+              .withSuccessHandler(function(filterSets) {
+                allFilterSets = filterSets || {};
+                if (filterSets['1']) {
+                  loadFilterSet('1');
+                }
+              })
+              .getAllFilterSets();
+          })
+          .getTasksAndModifiedTime();
       });
+      
       document.addEventListener('keydown', handleKeyDown);
 	  
 	    // Add this line to focus the page on load

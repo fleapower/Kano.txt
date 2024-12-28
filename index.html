@@ -397,6 +397,14 @@
         document.getElementById('completeButton').textContent = completeState;
         document.getElementById('searchBox').value = filterSet.searchQuery;
         
+        // Update context button states to match loaded filter
+        const contextButtons = document.getElementsByClassName('context-button');
+        Array.from(contextButtons).forEach(button => {
+          if (activeContexts.has(button.dataset.context)) {
+            button.classList.add('selected');
+          }
+        });
+        
         applyFilters();
       }
 

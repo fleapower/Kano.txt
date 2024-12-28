@@ -136,6 +136,7 @@
       let dueState = "All Dates";
       let priorityState = "All Pri";
       let completeState = "All States";  // Can be "All States", "Complete", or "Pending"
+      const validPriorities = ['A', 'B', 'C', 'D']; // Users can modify this array
 
       const saveTimeout = 3000; // You can increase this if you are getting an error that too many scripts are running on your account.  This is in milliseconds.
 
@@ -148,7 +149,7 @@
       }
 
       function cyclePriorityState() {
-        const states = ["All Pri", "(A)", "(B)", "(C)", "(D)"];
+        const states = ["All Pri", ...validPriorities.map(p => `(${p})`)];
         priorityState = states[(states.indexOf(priorityState) + 1) % states.length];
         document.getElementById('priorityButton').textContent = priorityState;
         applyFilters();
@@ -236,7 +237,7 @@
 
       // Helper function to extract priority from task text
       function extractPriority(taskText) {
-        const match = taskText.match(/\(([A-D])\)/);
+        const match = taskText.match(/\(([A-I])\)/);
         return match ? match[1] : null;
       }
 
@@ -648,21 +649,18 @@
       }
 
       function changePriority(tasks, increase) {
-        const priorities = ['A', 'B', 'C', 'D'];
-
         tasks.forEach(task => {
           const currentPriority = extractPriority(task.Task);
           if (!currentPriority) return;
           
-          const currentIndex = priorities.indexOf(currentPriority);
-          
+          const currentIndex = validPriorities.indexOf(currentPriority);
           if (currentIndex === -1) return;
           
           const newIndex = increase ? 
             Math.max(0, currentIndex - 1) : 
-            Math.min(priorities.length - 1, currentIndex + 1);
+            Math.min(validPriorities.length - 1, currentIndex + 1);
           
-          task.Task = task.Task.replace(/\([A-D]\)/, `(${priorities[newIndex]})`);
+          task.Task = task.Task.replace(/\([A-I]\)/, `(${validPriorities[newIndex]})`);
         });
       }
 

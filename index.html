@@ -300,13 +300,11 @@
             .replace(/\(C\)/g, '<span class="priority-c">(C)</span>')
             .replace(/\(D\)/g, '<span class="priority-d">(D)</span>')
             
-            /*
             .replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function(match) {
               return `<a href="mailto:${match}" target="_blank">${match}</a>`;
             })
-            */
             
-            .replace(/(@\S+)(?!\s*<\/a>)/g, '<span class="context">$1</span>')
+            .replace(/(\s@\S+)(?!\s*<\/a>)/g, '<span class="context">$1</span>')
             .replace(/(\+\S+)/g, '<span class="context">$1</span>')
             .replace(/(r:\S+)/g, '<span class="context">$1</span>')
             .replace(/(last:\S+)/g, '<span class="context">$1</span>')

@@ -234,7 +234,11 @@
         applyFilters();
       }
 
-      // ... keep all existing functions the same until applyFilters ...
+      // Helper function to extract priority from task text
+      function extractPriority(taskText) {
+        const match = taskText.match(/\(([A-D])\)/);
+        return match ? match[1] : null;
+      }
 
       function applyFilters() {
         const searchQuery = document.getElementById('searchBox').value.toLowerCase();
@@ -249,6 +253,7 @@
             const today = getTodayDate();
             const tomorrow = getTomorrowDate();
             const isComplete = taskText.startsWith('x ');
+            const taskPriority = extractPriority(taskText);
             
             const matchesDue = dueState === "All Dates" || 
               (dueState === "Due Today" && dueDate === today) ||
@@ -258,7 +263,10 @@
               (completeState === "Complete" && isComplete) ||
               (completeState === "Pending" && !isComplete);
             
-            const matchesPriority = priorityState === "All Pri" || taskText.startsWith(priorityState);
+            // Update priority matching to use extracted priority
+            const matchesPriority = priorityState === "All Pri" || 
+              (taskPriority && `(${taskPriority})` === priorityState);
+            
             const matchesSearch = taskText.toLowerCase().includes(searchQuery);
             const matchesContexts = Array.from(activeContexts).length === 0 || Array.from(activeContexts).some(context => {
               if (context === 'No Lists') return !taskText.match(/ @\w+/);
@@ -272,8 +280,8 @@
           const div = document.createElement('div');
           div.className = 'task';
           div.dataset.taskId = task.TaskID;
-          div.dataset.originalIndex = originalIndex; // Store original index
-          div.dataset.filteredIndex = filteredIndex; // Store filtered index
+          div.dataset.originalIndex = originalIndex;
+          div.dataset.filteredIndex = filteredIndex;
           div.onclick = (event) => handleTaskClick(event, filteredIndex, originalIndex);
 
           let taskText = task.Task
@@ -299,7 +307,8 @@
 
           div.innerHTML = taskText;
           taskList.appendChild(div);
-          });
+        });
+
         // Auto-select first task if nothing is selected
         if (lastSelectedIndex === -1 && taskList.children.length > 0) {
           const firstTask = taskList.children[0];
@@ -322,15 +331,15 @@
       function sortTasksByPriority() {
         allTasks.sort((a, b) => {
           // Extract priorities (if they exist)
-          const prioA = a.Task.match(/^\((.)\)/);
-          const prioB = b.Task.match(/^\((.)\)/);
+          const prioA = extractPriority(a.Task);
+          const prioB = extractPriority(b.Task);
           
           // Handle cases where one or both tasks don't have priorities
           if (!prioA && !prioB) return 0;
           if (!prioA) return 1;
           if (!prioB) return -1;
           
-          return prioA[1].localeCompare(prioB[1]);
+          return prioA.localeCompare(prioB);
         });
         applyFilters();
       }
@@ -631,22 +640,22 @@
       }
 
       function changePriority(tasks, increase) {
-      const priorities = ['A', 'B', 'C', 'D'];
+        const priorities = ['A', 'B', 'C', 'D'];
 
-      tasks.forEach(task => {
-        if (!task.Task.startsWith('(')) return;
-        
-        const currentPriority = task.Task[1];
-        const currentIndex = priorities.indexOf(currentPriority);
-        
-        if (currentIndex === -1) return;
-        
-        let newIndex = increase ? 
-          Math.max(0, currentIndex - 1) : 
-          Math.min(priorities.length - 1, currentIndex + 1);
+        tasks.forEach(task => {
+          const currentPriority = extractPriority(task.Task);
+          if (!currentPriority) return;
           
-        task.Task = `(${priorities[newIndex]})${task.Task.slice(3)}`;
-      });
+          const currentIndex = priorities.indexOf(currentPriority);
+          
+          if (currentIndex === -1) return;
+          
+          const newIndex = increase ? 
+            Math.max(0, currentIndex - 1) : 
+            Math.min(priorities.length - 1, currentIndex + 1);
+          
+          task.Task = task.Task.replace(/\([A-D]\)/, `(${priorities[newIndex]})`);
+        });
       }
 
       function setPriorityForSelectedTasks() {
@@ -662,7 +671,13 @@
           if (newPriority) {
             const originalIndices = getOriginalIndices();
             originalIndices.forEach(index => {
-              allTasks[index].Task = allTasks[index].Task.replace(/^\(.\)/, `(${newPriority})`);
+              const currentPriority = extractPriority(allTasks[index].Task);
+              if (currentPriority) {
+                allTasks[index].Task = allTasks[index].Task.replace(/\([A-D]\)/, `(${newPriority})`);
+              } else {
+                // If no priority exists, add it at the start
+                allTasks[index].Task = `(${newPriority}) ${allTasks[index].Task}`;
+              }
             });
             applyFilters();
           }

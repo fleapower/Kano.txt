@@ -155,7 +155,7 @@
       }
 
       function cycleCompleteState() {
-        const states = ["All States", "Complete", "Pending"];
+        const states = ["All States", "Pending", "Complete"];  // Swapped Pending and Complete
         completeState = states[(states.indexOf(completeState) + 1) % 3];
         document.getElementById('completeButton').textContent = completeState;
         applyFilters();

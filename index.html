@@ -26,6 +26,39 @@
         background-color: green;
         color: white; 
       }
+      .section {
+        margin-bottom: 24px;
+      }
+      .section-title {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 12px;
+        font-size: 16px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 4px;
+      }
+      .shortcut-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .hotkey {
+          font-family: monospace;
+          background: #f5f5f5;
+          padding: 4px 8px;
+          border-radius: 4px;
+          margin: 2px 0;
+          display: inline-block;
+          min-width: 120px;
+          border: 1px solid #ddd;
+          font-size: 14px;
+        }
+
+        .hotkey-info {
+          margin-left: 12px;
+          color: #444;
+          flex: 1;
+        }
       .priority-a {
         color: red;
       }
@@ -56,29 +89,45 @@
 
       .sidebar-dialog {
         position: fixed;
-        right: 0;
+        left: 50%;
         top: 50%;
-        width: 45%;
-        height: 100vh;
+        transform: translate(-50%, -50%) scale(0.95);
+        width: 90%;
+        max-width: 900px;
+        height: auto;
+        max-height: 90vh;
         background: white;
-        padding: 20px;
-        box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-        transform: translateX(100%);
+        padding: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        border-radius: 8px;
         transition: transform 0.3s ease;
       }
 
       .sidebar-dialog.active {
-        transform: translateX(0);
+        transform: translate(-50%, -50%) scale(1);
       }
 
-      .sidebar-dialog textarea, .sidebar-dialog input {
+      .sidebar-dialog input {
         width: 100%;
         padding: 8px;
         margin: 10px 0;
         border: 1px solid #ddd;
         border-radius: 4px;
         font-family: Arial, sans-serif;
-        font-size: 20px; 
+        font-size: 16px;
+      }
+
+      .sidebar-dialog textarea {
+        width: 100%;
+        padding: 8px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        height: 150px; /* Increased from default to accommodate ~5 lines */
+        min-height: 150px; /* Ensures minimum height */
+        resize: vertical; /* Allows vertical resizing */
       }
 
       .sidebar-dialog .buttons {
@@ -104,10 +153,28 @@
         color: white;
       }
 
+      .confirm {
+        background-color: #4CAF50;
+        color: white;
+        padding: 8px 24px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.2s;
+      }
+
+      .confirm:hover {
+        background-color: #45a049;
+      }
+
     </style>
   </head>
   <body tabindex="0">
-    <h1>GooDo.txt</h1>
+    <h1>GooDo.txt
+    <button onclick="loadNewFile()">Load ToDo.txt file</button>
+    <button onclick="clearFileId()">Clear File ID</button>
+    </h1>
     <div id="dialogContainer"></div>
     <div id="headerContainer" class="header-bar">
       <div class="filter-bar">
@@ -118,7 +185,17 @@
         <button onclick="sortTasksByDueDate()">Sort by Due Date</button>
         <button onclick="sortTasksByPriority()">Sort by Priority</button>
         <input type="text" id="searchBox" placeholder="Search..." oninput="applyFilters()">
-        <button onclick="clearFileId()">Clear File ID</button>
+
+        <script>
+          const searchBox = document.getElementById('searchBox');
+          
+          searchBox.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+              searchBox.value = '';
+              applyFilters(); // Optional: Call applyFilters to clear filters when the search box is cleared
+            }
+          });
+        </script>
       </div>
       <div id="contextButtons" class="context-bar">
       </div>
@@ -190,8 +267,9 @@
       function displayTasks(tasks) {
       allTasks = tasks;
       generateContextButtons();
-      applyFilters();
-      updateTaskCount();
+      // Don't apply filters immediately - wait for filter set
+      // applyFilters();
+      // updateTaskCount();
       }
 
       function updateTaskCount() {
@@ -251,9 +329,13 @@
       }
 
       function applyFilters() {
-        const searchQuery = document.getElementById('searchBox').value.toLowerCase();
+        const searchBox = document.getElementById('searchBox');
+        const searchQuery = searchBox.value;
         const taskList = document.getElementById('taskList');
         taskList.innerHTML = '';
+        
+        // Split search terms by spaces, but keep terms with quotes together
+        const searchTerms = searchQuery.match(/(?:[^\s"]+|"[^"]*")+/g) || [''];
         
         filteredTasks = allTasks
           .map((task, originalIndex) => ({ task, originalIndex }))
@@ -273,19 +355,27 @@
               (completeState === "Complete" && isComplete) ||
               (completeState === "Pending" && !isComplete);
             
-            // Update priority matching to use extracted priority
             const matchesPriority = priorityState === "All Pri" || 
               (taskPriority && `(${taskPriority})` === priorityState);
             
-            const matchesSearch = taskText.toLowerCase().includes(searchQuery);
             const matchesContexts = Array.from(activeContexts).length === 0 || Array.from(activeContexts).some(context => {
               if (context === 'No Lists') return !taskText.match(/ @\w+/);
               return taskText.includes(context);
+            });
+
+            // Handle search terms with exclusions
+            const matchesSearch = searchTerms.every(term => {
+              const cleanTerm = term.replace(/^["']|["']$/g, '');
+              if (cleanTerm.startsWith('-')) {
+                return !taskText.toLowerCase().includes(cleanTerm.slice(1).toLowerCase());
+              }
+              return taskText.toLowerCase().includes(cleanTerm.toLowerCase());
             });
             
             return matchesDue && matchesComplete && matchesSearch && matchesPriority && matchesContexts;
           });
 
+        // Rest of the existing display logic...
         filteredTasks.forEach(({ task, originalIndex }, filteredIndex) => {
           const div = document.createElement('div');
           div.className = 'task';
@@ -294,16 +384,15 @@
           div.dataset.filteredIndex = filteredIndex;
           div.onclick = (event) => handleTaskClick(event, filteredIndex, originalIndex);
 
+          // Existing task display formatting...
           let taskText = task.Task
             .replace(/\(A\)/g, '<span class="priority-a">(A)</span>')
             .replace(/\(B\)/g, '<span class="priority-b">(B)</span>')
             .replace(/\(C\)/g, '<span class="priority-c">(C)</span>')
             .replace(/\(D\)/g, '<span class="priority-d">(D)</span>')
-            
             .replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function(match) {
               return `<a href="mailto:${match}" target="_blank">${match}</a>`;
             })
-            
             .replace(/(\s@\S+)(?!\s*<\/a>)/g, '<span class="context">$1</span>')
             .replace(/(\+\S+)/g, '<span class="context">$1</span>')
             .replace(/(r:\S+)/g, '<span class="context">$1</span>')
@@ -327,7 +416,6 @@
 
         updateTaskCount();
 
-        // Auto-select first task if nothing is selected
         if (lastSelectedIndex === -1 && taskList.children.length > 0) {
           const firstTask = taskList.children[0];
           firstTask.classList.add('selected');
@@ -744,27 +832,7 @@
         `;
           
         const dialog = dialogContainer.querySelector('.sidebar-dialog');
-        setTimeout(() => dialog.classList.add('active'), 10); // Trigger animation
-
-        const input = dialog.querySelector('input:not([type="hidden"]), textarea');
-        const confirmButton = dialog.querySelector('.confirm');
-
-        // Focus on input if it exists and is visible, otherwise focus on confirm button
-        if (input && input.type !== 'hidden' && window.getComputedStyle(input).display !== 'none') {
-          input.focus();
-          input.addEventListener('keydown', (e) => {
-            e.stopPropagation();
-          });
-        } else if (confirmButton) {
-          setTimeout(() => confirmButton.focus(), 50);
-        }
-
-        // Add click handler for the dialog container
-        const handleOutsideClick = (e) => {
-          if (!dialog.contains(e.target)) {
-            closeDialog();
-          }
-        };
+        setTimeout(() => dialog.classList.add('active'), 10);
 
         const closeDialog = () => {
           dialog.classList.remove('active');
@@ -772,25 +840,80 @@
             callback(null);
             dialogContainer.innerHTML = '';
             document.removeEventListener('click', handleOutsideClick);
+            document.removeEventListener('keydown', handleEscapeKey);
           }, 300);
         };
 
-        dialog.querySelector('.confirm').onclick = () => {
-          const input = dialog.querySelector('input, textarea');
-          dialog.classList.remove('active');
+        const handleOutsideClick = (e) => {
+          if (!dialog.contains(e.target)) {
+            closeDialog();
+          }
+        };
+
+        const handleEscapeKey = (e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            closeDialog();
+          }
+        };
+
+        // Focus priority: visible input/textarea first, then confirm button
+        const input = dialog.querySelector('input:not([type="hidden"]), textarea');
+        const confirmButton = dialog.querySelector('.confirm');
+
+        if (input && window.getComputedStyle(input).display !== 'none') {
+          // Delay focus slightly to ensure the dialog is fully rendered
           setTimeout(() => {
-            callback(input.value);
-            dialogContainer.innerHTML = '';
-            document.removeEventListener('click', handleOutsideClick);
-          }, 300);
-        };
+            input.focus();
+            if (input.tagName.toLowerCase() === 'input') {
+              input.select(); // Select all text in input fields
+            }
+          }, 50);
 
-        dialog.querySelector('.cancel').onclick = () => {
-          closeDialog();
-        };
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              closeDialog();
+              return;
+            }
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              dialog.classList.remove('active');
+              setTimeout(() => {
+                callback(input.value);
+                dialogContainer.innerHTML = '';
+                document.removeEventListener('click', handleOutsideClick);
+                document.removeEventListener('keydown', handleEscapeKey);
+              }, 300);
+            }
+          });
+        } else if (confirmButton) {
+          // If no input or hidden input, focus the confirm button
+          setTimeout(() => confirmButton.focus(), 50);
+        }
+
+        if (confirmButton) {
+          confirmButton.onclick = () => {
+            dialog.classList.remove('active');
+            setTimeout(() => {
+              const inputElement = dialog.querySelector('input, textarea');
+              const value = inputElement && inputElement.type !== 'hidden' ? inputElement.value : true;
+              callback(value);
+              dialogContainer.innerHTML = '';
+              document.removeEventListener('click', handleOutsideClick);
+              document.removeEventListener('keydown', handleEscapeKey);
+            }, 300);
+          };
+        }
+
+        const cancelButton = dialog.querySelector('.cancel');
+        if (cancelButton) {
+          cancelButton.onclick = closeDialog;
+        }
 
         setTimeout(() => {
           document.addEventListener('click', handleOutsideClick);
+          document.addEventListener('keydown', handleEscapeKey);
         }, 100);
       }
 
@@ -823,7 +946,7 @@
                   <p>Do you want to:</p>
                   <div class="buttons">
                     <button class="confirm">Save Anyway</button>
-                    <button class="cancel">Cancel Save</button>
+                    <button class="cancel" autofocus>Cancel Save</button>
                   </div>
                 `;
                 showDialog(htmlContent, (confirmed) => {
@@ -867,6 +990,36 @@
           `;
           showDialog(htmlContent, () => {});
         }
+      }
+
+      function loadNewFile() {
+        const htmlContent = `
+          <h2>Load ToDo.txt File</h2>
+          <p>Please enter the Google Drive File ID for your task file:</p>
+          <input type="text" placeholder="Enter File ID">
+          <div id="fileIdError" style="color: red; margin-top: 10px;"></div>
+          <div class="buttons">
+            <button class="confirm">Load File</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        
+        showDialog(htmlContent, (fileId) => {
+          if (fileId) {
+            google.script.run
+              .withSuccessHandler((success) => {
+                if (success) {
+                  window.top.location.reload();
+                } else {
+                  const errorDiv = document.getElementById('fileIdError');
+                  if (errorDiv) {
+                    errorDiv.textContent = 'Invalid File ID. Please check and try again.';
+                  }
+                }
+              })
+              .setupFileId(fileId);
+          }
+        });
       }
 
       function handleTaskClick(event, index) {
@@ -1020,8 +1173,6 @@
           saveFilterSet(event.key);
         } else if (event.key >= '1' && event.key <= '9') {
           loadFilterSet(event.key);
-        } else if (event.key === '(') {
-          addNewTask();
         } else if (event.key === 'x') {
           const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
           toggleCompletion(selectedTaskObjects);
@@ -1038,6 +1189,11 @@
           event.preventDefault();
           document.getElementById('searchBox').focus();
           return;
+        } else if (event.key === 'h') {
+          event.preventDefault();
+          showHelpWindow();
+        } else if (event.key === 'n') {
+          addNewTask();
         } else if (event.key === 'q') {
           event.preventDefault();
           cyclePriorityState();
@@ -1067,6 +1223,139 @@
         }
       }
 
+      function showHelpWindow() {
+        const htmlContent = `
+          <div style="max-width: 800px; margin: 0 auto;">
+            <h2 style="text-align: center; margin-bottom: 20px;">Keyboard Shortcuts & Help</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 500px; overflow-y: auto; padding-right: 10px;">
+              <div>
+                <div class="section">
+                  <div class="section-title">Navigation</div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">↑/↓</span>
+                    <span class="hotkey-info">Navigate tasks</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">Shift + ↑/↓</span>
+                    <span class="hotkey-info">Select multiple tasks</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">Ctrl + ↑/↓</span>
+                    <span class="hotkey-info">Move task up/down</span>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Task Management</div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">Space</span>
+                    <span class="hotkey-info">Edit selected task</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">(</span>
+                    <span class="hotkey-info">Add new task</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">d</span>
+                    <span class="hotkey-info">Delete selected task(s)</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">x</span>
+                    <span class="hotkey-info">Toggle task completion</span>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Filters & Organization</div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">c</span>
+                    <span class="hotkey-info">Cycle completion state filter</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">u</span>
+                    <span class="hotkey-info">Cycle due date filter</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">q</span>
+                    <span class="hotkey-info">Cycle priority filter</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">0</span>
+                    <span class="hotkey-info">Clear all filters</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div class="section">
+                  <div class="section-title">Priority & Dates</div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">Alt + ↑/↓</span>
+                    <span class="hotkey-info">Increase/decrease priority</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">i</span>
+                    <span class="hotkey-info">Set priority for selected task(s)</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">s</span>
+                    <span class="hotkey-info">Set due date for selected task(s)</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">p</span>
+                    <span class="hotkey-info">Postpone selected task(s)</span>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Filter Sets</div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">1-9</span>
+                    <span class="hotkey-info">Load filter set</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">Ctrl + Alt + 1-9</span>
+                    <span class="hotkey-info">Save current filters as set</span>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Other</div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">f</span>
+                    <span class="hotkey-info">Focus search box</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">Ctrl + a</span>
+                    <span class="hotkey-info">Select all tasks</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">Ctrl + c</span>
+                    <span class="hotkey-info">Copy selected tasks</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">r</span>
+                    <span class="hotkey-info">Sort by priority</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">t</span>
+                    <span class="hotkey-info">Sort by due date</span>
+                  </div>
+                  <div class="shortcut-row">
+                    <span class="hotkey">h</span>
+                    <span class="hotkey-info">Show this help window</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="buttons" style="text-align: center; margin-top: 20px;">
+              <button class="confirm" autofocus>Close</button>
+            </div>
+          </div>
+        `;
+        showDialog(htmlContent, () => {});
+      }
+
       // Start listening for keyboard input
       listenForKeyboardInput();
 
@@ -1075,18 +1364,35 @@
           .withSuccessHandler(function(result) {
             lastModifiedTime = result.lastModified;
             lastSavedTime = result.lastModified;
-            displayTasks(result.tasks);
             
+            // Store tasks but don't display them yet
+            allTasks = result.tasks;
+            generateContextButtons();
+            
+            // Load filter sets and then display tasks
             google.script.run
               .withSuccessHandler(function(filterSets) {
                 allFilterSets = filterSets || {};
                 if (filterSets['1']) {
-                  loadFilterSet('1');
+                  loadFilterSet('1');  // This will trigger applyFilters()
+                } else {
+                  // If no filter set 1, then apply default display
+                  applyFilters();
                 }
               })
               .getAllFilterSets();
           })
           .getTasksAndModifiedTime();
+
+        google.script.run
+          .withSuccessHandler((fileId) => {
+            if (!fileId) {
+              loadNewFile();
+            } else {
+              loadTasks();
+            }
+          })
+          .getStoredFileId();
       });
       
       document.addEventListener('keydown', handleKeyDown);

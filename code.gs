@@ -15,6 +15,7 @@ function doGet() {
               input { width: 100%; padding: 8px; margin: 10px 0; }
               button { padding: 8px 16px; background: #4285f4; color: white; border: none; border-radius: 4px; cursor: pointer; }
               .error { color: red; margin-top: 10px; }
+              .success { color: green; margin-top: 10px; }
             </style>
           </head>
           <body>
@@ -23,6 +24,7 @@ function doGet() {
               <p>Please enter the Google Drive File ID for your task file:</p>
               <input type="text" id="fileId" placeholder="Enter File ID">
               <div id="error" class="error"></div>
+              <div id="success" class="success"></div>
               <button onclick="submitFileId()">Save</button>
               <button onclick="clearFileId()">Clear File ID</button>
             </div>
@@ -31,21 +33,23 @@ function doGet() {
                 const fileId = document.getElementById('fileId').value.trim();
                 if (!fileId) {
                   document.getElementById('error').textContent = 'Please enter a File ID';
+                  document.getElementById('success').textContent = '';
                   return;
                 }
                 google.script.run
                   .withSuccessHandler(function(success) {
                     if (success) {
-                      // Use top-level navigation to force a complete reload
-                      google.script.host.close();
-                      window.top.location.href = window.top.location.href;
-                      
+                      document.getElementById('success').textContent = 'File ID saved successfully!';
+                      document.getElementById('error').textContent = '';
+                      document.getElementById('fileId').value = '';
                     } else {
                       document.getElementById('error').textContent = 'Invalid File ID. Please check and try again.';
+                      document.getElementById('success').textContent = '';
                     }
                   })
                   .withFailureHandler(function(error) {
                     document.getElementById('error').textContent = 'Error: ' + error.message;
+                    document.getElementById('success').textContent = '';
                   })
                   .setupFileId(fileId);
               }
@@ -53,8 +57,9 @@ function doGet() {
               function clearFileId() {
                 google.script.run
                   .withSuccessHandler(function() {
-                    google.script.host.close();
-                    window.top.location.href = window.top.location.href;
+                    document.getElementById('success').textContent = 'File ID cleared successfully!';
+                    document.getElementById('error').textContent = '';
+                    document.getElementById('fileId').value = '';
                   })
                   .clearStoredFileId();
               }
@@ -84,11 +89,7 @@ function doGet() {
 function clearStoredFileId() {
   const userProperties = PropertiesService.getUserProperties();
   userProperties.deleteProperty('TODO_FILE_ID');
-  return HtmlService.createHtmlOutput(`
-    <script>
-      window.top.location.reload();
-    </script>
-  `);
+  return true;
 }
 
 function getStoredFileId() {

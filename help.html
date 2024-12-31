@@ -1,0 +1,147 @@
+<style>
+  .hotkey {
+      font-family: monospace;
+      background: #f5f5f5;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin: 2px 0;
+      display: inline-block;
+      min-width: 120px;
+      border: 1px solid #ddd;
+      font-size: 14px;
+    }
+
+    .hotkey-info {
+      margin-left: 12px;
+      color: #444;
+      flex: 1;
+    }
+</style>
+
+<div style="max-width: 800px; margin: 0 auto;">
+  <h2 style="text-align: center; margin-bottom: 20px;">Keyboard Shortcuts & Help</h2>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 500px; overflow-y: auto; padding-right: 10px;">
+    <div>
+      <div class="section">
+        <div class="section-title">Navigation</div>
+        <div class="shortcut-row">
+          <span class="hotkey">↑/↓</span>
+          <span class="hotkey-info">Navigate tasks</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">Shift + ↑/↓</span>
+          <span class="hotkey-info">Select multiple tasks</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">Ctrl + ↑/↓</span>
+          <span class="hotkey-info">Move task up/down</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Task Management</div>
+        <div class="shortcut-row">
+          <span class="hotkey">Space</span>
+          <span class="hotkey-info">Edit selected task</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">(</span>
+          <span class="hotkey-info">Add new task</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">d</span>
+          <span class="hotkey-info">Delete selected task(s)</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">x</span>
+          <span class="hotkey-info">Toggle task completion</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Filters & Organization</div>
+        <div class="shortcut-row">
+          <span class="hotkey">c</span>
+          <span class="hotkey-info">Cycle completion state filter</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">u</span>
+          <span class="hotkey-info">Cycle due date filter</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">q</span>
+          <span class="hotkey-info">Cycle priority filter</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">0</span>
+          <span class="hotkey-info">Clear all filters</span>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section">
+        <div class="section-title">Priority & Dates</div>
+        <div class="shortcut-row">
+          <span class="hotkey">Alt + ↑/↓</span>
+          <span class="hotkey-info">Increase/decrease priority</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">i</span>
+          <span class="hotkey-info">Set priority for selected task(s)</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">s</span>
+          <span class="hotkey-info">Set due date for selected task(s)</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">p</span>
+          <span class="hotkey-info">Postpone selected task(s)</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Filter Sets</div>
+        <div class="shortcut-row">
+          <span class="hotkey">1-9</span>
+          <span class="hotkey-info">Load filter set</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">Ctrl + Alt + 1-9</span>
+          <span class="hotkey-info">Save current filters as set</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Other</div>
+        <div class="shortcut-row">
+          <span class="hotkey">f</span>
+          <span class="hotkey-info">Focus search box</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">Ctrl + a</span>
+          <span class="hotkey-info">Select all tasks</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">Ctrl + c</span>
+          <span class="hotkey-info">Copy selected tasks</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">r</span>
+          <span class="hotkey-info">Sort by priority</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">t</span>
+          <span class="hotkey-info">Sort by due date</span>
+        </div>
+        <div class="shortcut-row">
+          <span class="hotkey">h</span>
+          <span class="hotkey-info">Show this help window</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="buttons" style="text-align: center; margin-top: 20px;">
+    <button class="confirm" autofocus>Close</button>
+  </div>
+</div>

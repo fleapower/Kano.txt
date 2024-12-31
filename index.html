@@ -11,9 +11,16 @@
       .filter-bar {background: white; padding: 5px;}
       .context-bar {background: white; padding: 5px;}
 
+      .button {
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 8px;
+      }
+
       .context-button {
-        background-color: gray;
-        color: white;
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 8px;
         margin: 2px;
       }
 
@@ -42,23 +49,7 @@
         align-items: center;
         margin-bottom: 8px;
       }
-      .hotkey {
-          font-family: monospace;
-          background: #f5f5f5;
-          padding: 4px 8px;
-          border-radius: 4px;
-          margin: 2px 0;
-          display: inline-block;
-          min-width: 120px;
-          border: 1px solid #ddd;
-          font-size: 14px;
-        }
 
-        .hotkey-info {
-          margin-left: 12px;
-          color: #444;
-          flex: 1;
-        }
       .priority-a {
         color: red;
       }
@@ -125,9 +116,9 @@
         border-radius: 4px;
         font-family: Arial, sans-serif;
         font-size: 16px;
-        height: 150px; /* Increased from default to accommodate ~5 lines */
-        min-height: 150px; /* Ensures minimum height */
-        resize: vertical; /* Allows vertical resizing */
+        height: 150px;
+        min-height: 150px;
+        resize: vertical;
       }
 
       .sidebar-dialog .buttons {
@@ -172,18 +163,18 @@
   </head>
   <body tabindex="0">
     <h1>GooDo.txt
-    <button onclick="loadNewFile()">Load ToDo.txt file</button>
-    <button onclick="clearFileId()">Clear File ID</button>
+    <button class="button" onclick="loadNewFile()">Load ToDo.txt file</button>
+    <button class="button" onclick="clearFileId()">Clear File ID</button>
     </h1>
     <div id="dialogContainer"></div>
     <div id="headerContainer" class="header-bar">
       <div class="filter-bar">
-        <button id="completeButton" onclick="cycleCompleteState()">All States</button>
-        <button id="dueButton" onclick="cycleDueState()">All Dates</button>
-        <button id="priorityButton" onclick="cyclePriorityState()">All Pri</button>
-        <button onclick="clearFilters()">Clear Filters</button>
-        <button onclick="sortTasksByDueDate()">Sort by Due Date</button>
-        <button onclick="sortTasksByPriority()">Sort by Priority</button>
+        <button class="button" id="completeButton" onclick="cycleCompleteState()">All States</button>
+        <button class="button" id="dueButton" onclick="cycleDueState()">All Dates</button>
+        <button class="button" id="priorityButton" onclick="cyclePriorityState()">All Pri</button>
+        <button class="button" onclick="clearFilters()">Clear Filters</button>
+        <button class="button" onclick="sortTasksByDueDate()">Sort by Due Date</button>
+        <button class="button" onclick="sortTasksByPriority()">Sort by Priority</button>
         <input type="text" id="searchBox" placeholder="Search..." oninput="applyFilters()">
 
         <script>
@@ -246,6 +237,7 @@
         applyFilters();
       }
 
+/*
       function loadAllFilterSets() {
         google.script.run
           .withSuccessHandler(function(filterSets) {
@@ -253,6 +245,7 @@
           })
           .getAllFilterSets();
       }
+*/
 
       function loadTasks() {
         google.script.run
@@ -264,6 +257,7 @@
           .getTasksAndModifiedTime();
       }
 
+
       function displayTasks(tasks) {
       allTasks = tasks;
       generateContextButtons();
@@ -272,6 +266,7 @@
       // updateTaskCount();
       }
 
+      
       function updateTaskCount() {
       const taskList = document.getElementById('taskList');
       const counter = document.createElement('div');
@@ -348,7 +343,7 @@
             const taskPriority = extractPriority(taskText);
             
             const matchesDue = dueState === "All Dates" || 
-              (dueState === "Due Today" && dueDate === today) ||
+              (dueState === "Due Today" && dueDate <= today) ||
               (dueState === "Due Tomorrow" && dueDate === tomorrow);
             
             const matchesComplete = completeState === "All States" ||
@@ -393,12 +388,12 @@
             .replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function(match) {
               return `<a href="mailto:${match}" target="_blank">${match}</a>`;
             })
-            .replace(/(\s@\S+)(?!\s*<\/a>)/g, '<span class="context">$1</span>')
+            .replace(/\b(https?:\/\/\S+)/gi, '<a href="$1" target="_blank">$1</a>') 
+            .replace(/(due:\S+)/g, '<span class="context">$1</span>') 
+            .replace(/(\s@\S+)(?!\s*<\/span>)/g, '<span class="context">$1</span>') // Modified lookahead
             .replace(/(\+\S+)/g, '<span class="context">$1</span>')
             .replace(/(r:\S+)/g, '<span class="context">$1</span>')
-            .replace(/(last:\S+)/g, '<span class="context">$1</span>')
-            .replace(/(due:\S+)/g, '<span class="context">$1</span>')
-            .replace(/\b(https?:\/\/\S+)/gi, '<a href="$1" target="_blank">$1</a>');
+            .replace(/(last:\S+)/g, '<span class="context">$1</span>');
 
           const dueDate = taskText.substring(taskText.indexOf('due:') + 4, taskText.indexOf('due:') + 14);
           const today = getTodayDate();
@@ -645,16 +640,17 @@
       }
 
       function toggleCompletion(selectedTasks) {
-      const todayDate = getTodayDate();
-      selectedTasks.forEach(task => {
-        if (task.Task.startsWith('x ')) {
-          task.Task = task.Task.replace(/^x \d{4}-\d{2}-\d{2} /, '');
-        } else {
-          task.Task = `x ${todayDate} ${task.Task}`;
-        }
-      });
+        const todayDate = getTodayDate();
+        selectedTasks.forEach(task => {
+          if (task.Task.startsWith('x ')) {
+            task.Task = task.Task.replace(/^x \d{4}-\d{2}-\d{2} /, '');
+          } else {
+            task.Task = `x ${todayDate} ${task.Task}`;
+          }
+        });
       }
 
+/*
       // Function to open a popup window with a custom dialog
       function showPopupDialog(htmlContent, callback) {
         const popup = window.open('', 'popup', 'width=400,height=300');
@@ -674,6 +670,7 @@
           popup.close();
         };
       }
+*/
 
       function editTask(index) {
         const task = allTasks[index];
@@ -798,10 +795,10 @@
       // Function to postpone selected tasks
       function postponeSelectedTasks() {
         const htmlContent = `
-        <h2>Postpone</h2>
-        <input type="number" placeholder="Enter the number of days to postpone">
+        <h2>Delay</h2>
+        <input type="number" placeholder="Enter the number of days to delay task">
         <div class="buttons">
-            <button class="confirm">Postpone</button>
+            <button class="confirm">Delay</button>
             <button class="cancel">Cancel</button>
           </div>
         `;
@@ -923,18 +920,6 @@
         return Array.from(selectedTasks).map(index => parseInt(tasks[index].dataset.originalIndex));
       }
 
-      // automatically save waiting for 'saveTimeout' milliseconds
-      let timeoutId;
-      // Function to listen for keyboard input
-      function listenForKeyboardInput() {
-        document.addEventListener('keydown', resetTimer);
-      }
-      // Function to reset the timer
-      function resetTimer() {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(saveTasks, saveTimeout);
-      }
-
       function checkFileModified() {
         return new Promise((resolve, reject) => {
           google.script.run
@@ -1003,7 +988,7 @@
             <button class="cancel">Cancel</button>
           </div>
         `;
-        
+
         showDialog(htmlContent, (fileId) => {
           if (fileId) {
             google.script.run
@@ -1020,6 +1005,18 @@
               .setupFileId(fileId);
           }
         });
+      }
+
+      // automatically save waiting for 'saveTimeout' milliseconds
+      let timeoutId;
+      // Function to listen for keyboard input
+      function listenForKeyboardInput() {
+        document.addEventListener('keydown', resetTimer);
+      }
+      // Function to reset the timer
+      function resetTimer() {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(saveTasks, saveTimeout);
       }
 
       function handleTaskClick(event, index) {
@@ -1182,7 +1179,7 @@
           selectedTasks.forEach(index => {
             tasks[index].classList.add('selected');
           });
-        } else if (event.key === 'd') {
+        } else if (event.key === 'Delete') {
           event.preventDefault();
           deleteTask(filteredTasks[lastSelectedIndex].originalIndex);
         } else if (event.key === 'f') {
@@ -1197,8 +1194,6 @@
         } else if (event.key === 'q') {
           event.preventDefault();
           cyclePriorityState();
-        } else if (event.key === '(') {
-          addNewTask();
         } else if (!event.ctrlKey && event.key === 'r') {
           event.preventDefault();
           sortTasksByPriority();
@@ -1208,10 +1203,10 @@
         } else if (event.key === 't') {
           event.preventDefault();
           sortTasksByDueDate();
-        } else if (event.key === 'i') {
+        } else if (event.key === 'p') {
           event.preventDefault();
           setPriorityForSelectedTasks();
-        } else if (event.key === 'p') {
+        } else if (event.key === 'd') {
           event.preventDefault();
           postponeSelectedTasks();
         } else if (event.key === 'u') {
@@ -1224,141 +1219,30 @@
       }
 
       function showHelpWindow() {
-        const htmlContent = `
-          <div style="max-width: 800px; margin: 0 auto;">
-            <h2 style="text-align: center; margin-bottom: 20px;">Keyboard Shortcuts & Help</h2>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; height: 500px; overflow-y: auto; padding-right: 10px;">
-              <div>
-                <div class="section">
-                  <div class="section-title">Navigation</div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">↑/↓</span>
-                    <span class="hotkey-info">Navigate tasks</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">Shift + ↑/↓</span>
-                    <span class="hotkey-info">Select multiple tasks</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">Ctrl + ↑/↓</span>
-                    <span class="hotkey-info">Move task up/down</span>
-                  </div>
-                </div>
-
-                <div class="section">
-                  <div class="section-title">Task Management</div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">Space</span>
-                    <span class="hotkey-info">Edit selected task</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">(</span>
-                    <span class="hotkey-info">Add new task</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">d</span>
-                    <span class="hotkey-info">Delete selected task(s)</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">x</span>
-                    <span class="hotkey-info">Toggle task completion</span>
-                  </div>
-                </div>
-
-                <div class="section">
-                  <div class="section-title">Filters & Organization</div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">c</span>
-                    <span class="hotkey-info">Cycle completion state filter</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">u</span>
-                    <span class="hotkey-info">Cycle due date filter</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">q</span>
-                    <span class="hotkey-info">Cycle priority filter</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">0</span>
-                    <span class="hotkey-info">Clear all filters</span>
-                  </div>
-                </div>
+        // Use google.script.run to call the server-side function
+        google.script.run
+          .withSuccessHandler(function(helpContent) {
+            const htmlContent = `
+              <div class="help-content">
+                ${helpContent}
               </div>
-
-              <div>
-                <div class="section">
-                  <div class="section-title">Priority & Dates</div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">Alt + ↑/↓</span>
-                    <span class="hotkey-info">Increase/decrease priority</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">i</span>
-                    <span class="hotkey-info">Set priority for selected task(s)</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">s</span>
-                    <span class="hotkey-info">Set due date for selected task(s)</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">p</span>
-                    <span class="hotkey-info">Postpone selected task(s)</span>
-                  </div>
-                </div>
-
-                <div class="section">
-                  <div class="section-title">Filter Sets</div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">1-9</span>
-                    <span class="hotkey-info">Load filter set</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">Ctrl + Alt + 1-9</span>
-                    <span class="hotkey-info">Save current filters as set</span>
-                  </div>
-                </div>
-
-                <div class="section">
-                  <div class="section-title">Other</div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">f</span>
-                    <span class="hotkey-info">Focus search box</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">Ctrl + a</span>
-                    <span class="hotkey-info">Select all tasks</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">Ctrl + c</span>
-                    <span class="hotkey-info">Copy selected tasks</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">r</span>
-                    <span class="hotkey-info">Sort by priority</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">t</span>
-                    <span class="hotkey-info">Sort by due date</span>
-                  </div>
-                  <div class="shortcut-row">
-                    <span class="hotkey">h</span>
-                    <span class="hotkey-info">Show this help window</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div class="buttons" style="text-align: center; margin-top: 20px;">
-              <button class="confirm" autofocus>Close</button>
-            </div>
-          </div>
-        `;
-        showDialog(htmlContent, () => {});
+            `;
+            showDialog(htmlContent, () => {});
+          })
+          .withFailureHandler(function(error) {
+            console.error('Failed to load help content:', error);
+            alert('Failed to load help content. Please try again.');
+          })
+          .getHelpContent();
       }
 
       // Start listening for keyboard input
       listenForKeyboardInput();
 
+	    // Add this line to focus the page on load
+	    window.onload = () => document.body.focus();
+
+/*
       document.addEventListener('DOMContentLoaded', function() {
         google.script.run
           .withSuccessHandler(function(result) {
@@ -1367,7 +1251,6 @@
             
             // Store tasks but don't display them yet
             allTasks = result.tasks;
-            generateContextButtons();
             
             // Load filter sets and then display tasks
             google.script.run
@@ -1394,12 +1277,71 @@
           })
           .getStoredFileId();
       });
+*/
+
+      document.addEventListener('DOMContentLoaded', function() {
+        google.script.run
+          .withSuccessHandler(function(result) {
+            lastModifiedTime = result.lastModified;
+            lastSavedTime = result.lastModified;
+            
+            // Store tasks but don't display them yet
+            allTasks = result.tasks;
+            generateContextButtons();
+            
+            // Load filter sets and then display tasks
+            google.script.run
+              .withSuccessHandler(function(filterSets) {
+                allFilterSets = filterSets || {};
+                if (filterSets['1']) {
+                  loadFilterSet('1');  // This will trigger applyFilters()
+                } else {
+                  // If no filter set 1, then apply default display
+                  applyFilters();
+                }
+              })
+              .getAllFilterSets();
+          })
+          .getTasksAndModifiedTime();
+      });
+
+/*
+      document.addEventListener('DOMContentLoaded', function() {
+        // Add the keyboard event listener to the document body
+        document.body.addEventListener('keydown', handleKeyDown);
+        
+        google.script.run
+          .withSuccessHandler(function(result) {
+            lastModifiedTime = result.lastModified;
+            lastSavedTime = result.lastModified;
+            
+            // Store tasks but don't display them yet
+            allTasks = result.tasks;
+            generateContextButtons();
+            
+            // Load filter sets and then display tasks
+            google.script.run
+              .withSuccessHandler(function(filterSets) {
+                allFilterSets = filterSets || {};
+                if (filterSets['1']) {
+                  loadFilterSet('1');  // This will trigger applyFilters()
+                } else {
+                  // If no filter set 1, then apply default display
+                  applyFilters();
+                }
+              })
+              .getAllFilterSets();
+          })
+          .getTasksAndModifiedTime();
+      });
+*/
+
       
       document.addEventListener('keydown', handleKeyDown);
 	  
 	    // Add this line to focus the page on load
 	    window.onload = () => document.body.focus();
-	  
+
     </script>
   </body>
 </html>

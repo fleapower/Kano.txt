@@ -17,6 +17,11 @@
         border-radius: 8px;
       }
 
+      .button:active {
+        transform: translateY(2px);
+        background-color: green;
+      }
+
       .context-button {
         font-size: 14px;
         font-weight: bold;
@@ -259,11 +264,23 @@
 
 
       function displayTasks(tasks) {
-      allTasks = tasks;
-      generateContextButtons();
-      // Don't apply filters immediately - wait for filter set
-      // applyFilters();
-      // updateTaskCount();
+        allTasks = tasks;
+        const priorities = new Set();
+        
+        tasks.forEach(task => {
+          const match = task.Task.match(/\(([A-Z])\)/);
+          if (match) priorities.add(match[1]);
+        });
+        
+        validPriorities = Array.from(priorities).sort();
+        generateContextButtons();
+        applyFilters();
+        
+        // Make tasks draggable
+        const taskElements = document.getElementsByClassName('task');
+        Array.from(taskElements).forEach(task => {
+          task.draggable = true;
+        });
       }
 
       
@@ -323,13 +340,52 @@
         return match ? match[1] : null;
       }
 
+      function applySearchFilter(taskText, searchTerms) {
+        if (!searchTerms.length) return true;
+        
+        // Split into AND groups (terms within [])
+        const andGroups = [];
+        let currentOrTerms = [];
+        
+        searchTerms.forEach(term => {
+          if (term.startsWith('[') && term.endsWith(']')) {
+            if (currentOrTerms.length) {
+              andGroups.push({ type: 'or', terms: currentOrTerms });
+              currentOrTerms = [];
+            }
+            andGroups.push({ 
+              type: 'and', 
+              terms: term.slice(1, -1).split(/\s+/)
+            });
+          } else {
+            currentOrTerms.push(term);
+          }
+        });
+        
+        if (currentOrTerms.length) {
+          andGroups.push({ type: 'or', terms: currentOrTerms });
+        }
+        
+        return andGroups.every(group => {
+          if (group.type === 'and') {
+            return group.terms.every(term => 
+              taskText.toLowerCase().includes(term.toLowerCase())
+            );
+          } else {
+            return group.terms.some(term =>
+              taskText.toLowerCase().includes(term.toLowerCase())
+            );
+          }
+        });
+      }
+
       function applyFilters() {
         const searchBox = document.getElementById('searchBox');
         const searchQuery = searchBox.value;
         const taskList = document.getElementById('taskList');
         taskList.innerHTML = '';
         
-        // Split search terms by spaces, but keep terms with quotes together
+        // Split search terms while preserving quoted strings and AND groups
         const searchTerms = searchQuery.match(/(?:[^\s"]+|"[^"]*")+/g) || [''];
         
         filteredTasks = allTasks
@@ -358,14 +414,8 @@
               return taskText.includes(context);
             });
 
-            // Handle search terms with exclusions
-            const matchesSearch = searchTerms.every(term => {
-              const cleanTerm = term.replace(/^["']|["']$/g, '');
-              if (cleanTerm.startsWith('-')) {
-                return !taskText.toLowerCase().includes(cleanTerm.slice(1).toLowerCase());
-              }
-              return taskText.toLowerCase().includes(cleanTerm.toLowerCase());
-            });
+            // Use the advanced search filter functionality
+            const matchesSearch = applySearchFilter(taskText, searchTerms);
             
             return matchesDue && matchesComplete && matchesSearch && matchesPriority && matchesContexts;
           });
@@ -380,6 +430,7 @@
           div.onclick = (event) => handleTaskClick(event, filteredIndex, originalIndex);
 
           // Existing task display formatting...
+          /*
           let taskText = task.Task
             .replace(/\(A\)/g, '<span class="priority-a">(A)</span>')
             .replace(/\(B\)/g, '<span class="priority-b">(B)</span>')
@@ -394,6 +445,22 @@
             .replace(/(\+\S+)/g, '<span class="context">$1</span>')
             .replace(/(r:\S+)/g, '<span class="context">$1</span>')
             .replace(/(last:\S+)/g, '<span class="context">$1</span>');
+          */
+
+          let taskText = task.Task
+          .replace(/\(A\)/g, '<span class="priority-a">(A)</span>')
+          .replace(/\(B\)/g, '<span class="priority-b">(B)</span>')
+          .replace(/\(C\)/g, '<span class="priority-c">(C)</span>')
+          .replace(/\(D\)/g, '<span class="priority-d">(D)</span>')
+          .replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function(match) {
+            return `<a href="mailto:${match}" target="_blank">${match}</a>`;
+          })
+          .replace(/\b(https?:\/\/\S+)/gi, '<a href="$1" target="_blank">$1</a>')
+          .replace(/\b(due:\S+)\b/g, '<span class="context">$1</span>')
+          .replace(/\b(\+\S+)\b/g, '<span class="context">$1</span>')
+          .replace(/\b(r:\S+)\b/g, '<span class="context">$1</span>')
+          .replace(/\b(last:\S+)\b/g, '<span class="context">$1</span>')
+          .replace(/\b(\s@\S+)\b/g, '<span class="context">$1</span>');
 
           const dueDate = taskText.substring(taskText.indexOf('due:') + 4, taskText.indexOf('due:') + 14);
           const today = getTodayDate();
@@ -608,6 +675,35 @@
         }, 500);
       }
 
+      function initDragAndDrop() {
+        const taskList = document.getElementById('taskList');
+        let draggedTask = null;
+        let draggedIndex = null;
+
+        taskList.addEventListener('dragstart', (e) => {
+          draggedTask = e.target;
+          draggedIndex = Array.from(taskList.children).indexOf(draggedTask);
+          e.target.style.opacity = '0.5';
+        });
+
+        taskList.addEventListener('dragend', (e) => {
+          e.target.style.opacity = '1';
+        });
+
+        taskList.addEventListener('dragover', (e) => {
+          e.preventDefault();
+        });
+
+        taskList.addEventListener('drop', (e) => {
+          e.preventDefault();
+          const dropTarget = e.target.closest('.task');
+          if (dropTarget && draggedTask) {
+            const dropIndex = Array.from(taskList.children).indexOf(dropTarget);
+            swapTasks(draggedIndex, dropIndex);
+          }
+        });
+      }
+
       // Function to get today's date in user's local time zone in YYYY-MM-DD format
       function getTodayDate() {
         const today = new Date();
@@ -676,35 +772,76 @@
         const task = allTasks[index];
         const htmlContent = `
           <h2>Edit Task</h2>
+          <div id="calendar"></div>
           <textarea autofocus>${task.Task}</textarea>
           <div class="buttons">
             <button class="confirm">Save</button>
             <button class="cancel">Cancel</button>
           </div>
         `;
+        
         showDialog(htmlContent, (newTask) => {
           if (newTask !== null) {
             allTasks[index].Task = replaceDueDateKeywords(newTask);
             applyFilters();
           }
         });
+
+        // Position cursor at end
+        setTimeout(() => {
+          const textarea = document.querySelector('.sidebar-dialog textarea');
+          textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+        }, 50);
       }
-	  
-	    function addNewTask() {
+
+      class Calendar {
+        constructor(container, options) {
+          this.container = container;
+          this.onChange = options.onChange;
+          this.currentDate = new Date();
+          this.render();
+        }
+
+        render() {
+          // Calendar rendering logic here
+        }
+      }
+
+      function initCalendar(container) {
+        const calendar = new Calendar(container, {
+          onChange: (date) => {
+            const textarea = document.querySelector('.sidebar-dialog textarea');
+            const dueDate = date.toISOString().split('T')[0];
+            textarea.value = textarea.value.replace(/due:\d{4}-\d{2}-\d{2}/, '') + 
+              ` due:${dueDate}`;
+          }
+        });
+        return calendar;
+      }
+
+      function addNewTask() {
         const htmlContent = `
           <h2>New Task</h2>
-          <textarea placeholder="Enter the new task" autofocus></textarea>
+          <div id="calendar"></div>
+          <textarea placeholder="Enter the new task" autofocus>(</textarea>
           <div class="buttons">
             <button class="confirm">Add</button>
             <button class="cancel">Cancel</button>
           </div>
-          `;
+        `;
+        
         showDialog(htmlContent, (newTask) => {
           if (newTask) {
             allTasks.unshift({ TaskID: allTasks.length, Task: replaceDueDateKeywords(newTask) });
             applyFilters();
           }
         });
+
+        // Position cursor after (
+        setTimeout(() => {
+          const textarea = document.querySelector('.sidebar-dialog textarea');
+          textarea.selectionStart = textarea.selectionEnd = 1;
+        }, 50);
       }
 
       function setDateForSelectedTasks() {
@@ -769,29 +906,32 @@
       function setPriorityForSelectedTasks() {
         const htmlContent = `
           <h2>Set Priority</h2>
-          <input type="text" placeholder="Enter the new priority (A, B, C, etc.)">
+          <input type="text" 
+                placeholder="(A, B, C...)" 
+                maxlength="1" 
+                pattern="[A-Za-z]"
+                onkeydown="return /[a-zA-Z]/i.test(event.key) || event.key === 'Backspace' || event.key === 'Delete' || event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Tab'"
+                style="text-transform: uppercase;">
           <div class="buttons">
             <button class="confirm">Set Priority</button>
             <button class="cancel">Cancel</button>
           </div>
         `;
         showDialog(htmlContent, (newPriority) => {
-          if (newPriority) {
+          if (newPriority && /^[A-Za-z]$/.test(newPriority)) {
             const originalIndices = getOriginalIndices();
             originalIndices.forEach(index => {
               const currentPriority = extractPriority(allTasks[index].Task);
               if (currentPriority) {
-                allTasks[index].Task = allTasks[index].Task.replace(/\([A-D]\)/, `(${newPriority})`);
+                allTasks[index].Task = allTasks[index].Task.replace(/\([A-D]\)/, `(${newPriority.toUpperCase()})`);
               } else {
-                // If no priority exists, add it at the start
-                allTasks[index].Task = `(${newPriority}) ${allTasks[index].Task}`;
+                allTasks[index].Task = `(${newPriority.toUpperCase()}) ${allTasks[index].Task}`;
               }
             });
             applyFilters();
           }
         });
       }
-
       // Function to postpone selected tasks
       function postponeSelectedTasks() {
         const htmlContent = `
@@ -1189,7 +1329,7 @@
         } else if (event.key === 'h') {
           event.preventDefault();
           showHelpWindow();
-        } else if (event.key === 'n') {
+        } else if (event.key === '(') {
           addNewTask();
         } else if (event.key === 'q') {
           event.preventDefault();
@@ -1338,6 +1478,9 @@
 
       
       document.addEventListener('keydown', handleKeyDown);
+      document.addEventListener('DOMContentLoaded', () => {
+        initDragAndDrop();
+      });      
 	  
 	    // Add this line to focus the page on load
 	    window.onload = () => document.body.focus();

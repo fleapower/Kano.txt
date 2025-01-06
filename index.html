@@ -1322,7 +1322,7 @@
         } else if (event.key === 'Delete') {
           event.preventDefault();
           deleteTask(filteredTasks[lastSelectedIndex].originalIndex);
-        } else if (event.key === 'f') {
+        } else if (!event.ctrlKey && event.key === 'f') {
           event.preventDefault();
           document.getElementById('searchBox').focus();
           return;

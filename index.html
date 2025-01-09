@@ -2,174 +2,11 @@
 <html>
   <head>
     <base target="_top">
-    <style>
-      body { font-family: Arial, sans-serif; }
-      .task { cursor: pointer; padding: 5px; border-bottom: 1px solid #ccc; }
-      .selected { background-color: #80EF80; }
-
-      .header-bar {position: sticky; top: 0; background: white; padding: 10px; border-bottom: 1px solid #ccc;}
-      .filter-bar {background: white; padding: 5px;}
-      .context-bar {background: white; padding: 5px;}
-
-      .button {
-        font-size: 14px;
-        font-weight: bold;
-        border-radius: 8px;
-      }
-
-      .button:active {
-        transform: translateY(2px);
-        background-color: green;
-      }
-
-      .context-button {
-        font-size: 14px;
-        font-weight: bold;
-        border-radius: 8px;
-        margin: 2px;
-      }
-
-      .context-button:focus {
-        border: 2px solid white;
-        outline: 2px solid green;
-      }
-
-      .context-button.selected {
-        background-color: green;
-        color: white; 
-      }
-      .section {
-        margin-bottom: 24px;
-      }
-      .section-title {
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 12px;
-        font-size: 16px;
-        border-bottom: 2px solid #eee;
-        padding-bottom: 4px;
-      }
-      .shortcut-row {
-        display: flex;
-        align-items: center;
-        margin-bottom: 8px;
-      }
-
-      .priority-a {
-        color: red;
-      }
-      .priority-b {
-        color: orange;
-      }
-      .priority-c {
-        color: green;
-      }
-      .priority-d {
-        color: blue;
-      }
-      .context {
-        font-size: smaller;
-      }
-      .complete-task {
-        text-decoration: line-through;
-      }
-      .overdue-task {
-        color: red;
-      }
-      .task {
-        -webkit-user-select: none;  /* Safari */
-        -ms-user-select: none;      /* IE 10 and IE 11 */
-        user-select: none;          /* Standard syntax */
-      }
-
-
-      .sidebar-dialog {
-        position: fixed;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%) scale(0.95);
-        width: 90%;
-        max-width: 900px;
-        height: auto;
-        max-height: 90vh;
-        background: white;
-        padding: 30px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        border-radius: 8px;
-        transition: transform 0.3s ease;
-      }
-
-      .sidebar-dialog.active {
-        transform: translate(-50%, -50%) scale(1);
-      }
-
-      .sidebar-dialog input {
-        width: 100%;
-        padding: 8px;
-        margin: 10px 0;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-      }
-
-      .sidebar-dialog textarea {
-        width: 100%;
-        padding: 8px;
-        margin: 10px 0;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-family: Arial, sans-serif;
-        font-size: 16px;
-        height: 150px;
-        min-height: 150px;
-        resize: vertical;
-      }
-
-      .sidebar-dialog .buttons {
-        bottom: 20px;
-        width: calc(100% - 40px);
-      }
-
-      .sidebar-dialog button {
-        padding: 8px 16px;
-        margin: 5px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-
-      .sidebar-dialog .confirm {
-        background-color: gray;
-        color: white;
-      }
-
-      .sidebar-dialog .cancel {
-        background-color: gray;
-        color: white;
-      }
-
-      .confirm {
-        background-color: #4CAF50;
-        color: white;
-        padding: 8px 24px;
-        border-radius: 4px;
-        border: none;
-        cursor: pointer;
-        font-size: 14px;
-        transition: background-color 0.2s;
-      }
-
-      .confirm:hover {
-        background-color: #45a049;
-      }
-
-    </style>
+    <?!= include('styles'); ?>
   </head>
   <body tabindex="0">
     <h1>GooDo.txt
     <button class="button" onclick="loadNewFile()">Load ToDo.txt file</button>
-    <button class="button" onclick="clearFileId()">Clear File ID</button>
     </h1>
     <div id="dialogContainer"></div>
     <div id="headerContainer" class="header-bar">
@@ -180,7 +17,7 @@
         <button class="button" onclick="clearFilters()">Clear Filters</button>
         <button class="button" onclick="sortTasksByDueDate()">Sort by Due Date</button>
         <button class="button" onclick="sortTasksByPriority()">Sort by Priority</button>
-        <input type="text" id="searchBox" placeholder="Search..." oninput="applyFilters()">
+        <input type="text" id="searchBox" placeholder="Find..." oninput="applyFilters()">
 
         <script>
           const searchBox = document.getElementById('searchBox');
@@ -209,48 +46,15 @@
       let dueState = "All Dates";
       let priorityState = "All Pri";
       let completeState = "All States";  // Can be "All States", "Complete", or "Pending"
-      const validPriorities = ['A', 'B', 'C', 'D']; // Users can modify this array
+      let validPriorities = [];
+      let cutTasks = [];
 
       const saveTimeout = 3000; // You can increase this if you are getting an error that too many scripts are running on your account.  This is in milliseconds.
 
-      function clearFileId() {
-        google.script.run
-          .withSuccessHandler(function() {
-            window.top.location.reload();
-          })
-          .clearStoredFileId();
-      }
-
-      function cyclePriorityState() {
-        const states = ["All Pri", ...validPriorities.map(p => `(${p})`)];
-        priorityState = states[(states.indexOf(priorityState) + 1) % states.length];
-        document.getElementById('priorityButton').textContent = priorityState;
-        applyFilters();
-      }
-
-      function cycleCompleteState() {
-        const states = ["All States", "Pending", "Complete"];  // Swapped Pending and Complete
-        completeState = states[(states.indexOf(completeState) + 1) % 3];
-        document.getElementById('completeButton').textContent = completeState;
-        applyFilters();
-      }
-
-      function cycleDueState() {
-        const states = ["All Dates", "Due Today", "Due Tomorrow"];
-        dueState = states[(states.indexOf(dueState) + 1) % 3];
-        document.getElementById('dueButton').textContent = dueState;
-        applyFilters();
-      }
-
-/*
-      function loadAllFilterSets() {
-        google.script.run
-          .withSuccessHandler(function(filterSets) {
-            allFilterSets = filterSets || {};
-          })
-          .getAllFilterSets();
-      }
-*/
+      // functions which need to be loaded up front are in index.html, others are in the following files //
+      <?!= include('displayFunctions.html') ?>
+      <?!= include('fileFunctions.html') ?>
+      <?!= include('taskFunctions.html') ?>
 
       function loadTasks() {
         google.script.run
@@ -262,28 +66,13 @@
           .getTasksAndModifiedTime();
       }
 
-
       function displayTasks(tasks) {
         allTasks = tasks;
-        const priorities = new Set();
-        
-        tasks.forEach(task => {
-          const match = task.Task.match(/\(([A-Z])\)/);
-          if (match) priorities.add(match[1]);
-        });
-        
-        validPriorities = Array.from(priorities).sort();
+        updateValidPriorities(); // Call updateValidPriorities here
         generateContextButtons();
         applyFilters();
-        
-        // Make tasks draggable
-        const taskElements = document.getElementsByClassName('task');
-        Array.from(taskElements).forEach(task => {
-          task.draggable = true;
-        });
       }
-
-      
+  
       function updateTaskCount() {
       const taskList = document.getElementById('taskList');
       const counter = document.createElement('div');
@@ -321,62 +110,10 @@
         });
       }
 
-      // Function to toggle context filter and update button color
-      function toggleContextFilter(context) {
-        const button = document.querySelector(`.context-button[data-context="${context}"]`);
-        if (activeContexts.has(context)) {
-          activeContexts.delete(context);
-          button.classList.remove('selected');
-        } else {
-          activeContexts.add(context);
-          button.classList.add('selected');
-        }
-        applyFilters();
-      }
-
       // Helper function to extract priority from task text
       function extractPriority(taskText) {
         const match = taskText.match(/\(([A-I])\)/);
         return match ? match[1] : null;
-      }
-
-      function applySearchFilter(taskText, searchTerms) {
-        if (!searchTerms.length) return true;
-        
-        // Split into AND groups (terms within [])
-        const andGroups = [];
-        let currentOrTerms = [];
-        
-        searchTerms.forEach(term => {
-          if (term.startsWith('[') && term.endsWith(']')) {
-            if (currentOrTerms.length) {
-              andGroups.push({ type: 'or', terms: currentOrTerms });
-              currentOrTerms = [];
-            }
-            andGroups.push({ 
-              type: 'and', 
-              terms: term.slice(1, -1).split(/\s+/)
-            });
-          } else {
-            currentOrTerms.push(term);
-          }
-        });
-        
-        if (currentOrTerms.length) {
-          andGroups.push({ type: 'or', terms: currentOrTerms });
-        }
-        
-        return andGroups.every(group => {
-          if (group.type === 'and') {
-            return group.terms.every(term => 
-              taskText.toLowerCase().includes(term.toLowerCase())
-            );
-          } else {
-            return group.terms.some(term =>
-              taskText.toLowerCase().includes(term.toLowerCase())
-            );
-          }
-        });
       }
 
       function applyFilters() {
@@ -420,7 +157,6 @@
             return matchesDue && matchesComplete && matchesSearch && matchesPriority && matchesContexts;
           });
 
-        // Rest of the existing display logic...
         filteredTasks.forEach(({ task, originalIndex }, filteredIndex) => {
           const div = document.createElement('div');
           div.className = 'task';
@@ -430,23 +166,6 @@
           div.onclick = (event) => handleTaskClick(event, filteredIndex, originalIndex);
 
           // Existing task display formatting...
-          /*
-          let taskText = task.Task
-            .replace(/\(A\)/g, '<span class="priority-a">(A)</span>')
-            .replace(/\(B\)/g, '<span class="priority-b">(B)</span>')
-            .replace(/\(C\)/g, '<span class="priority-c">(C)</span>')
-            .replace(/\(D\)/g, '<span class="priority-d">(D)</span>')
-            .replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function(match) {
-              return `<a href="mailto:${match}" target="_blank">${match}</a>`;
-            })
-            .replace(/\b(https?:\/\/\S+)/gi, '<a href="$1" target="_blank">$1</a>') 
-            .replace(/(due:\S+)/g, '<span class="context">$1</span>') 
-            .replace(/(\s@\S+)(?!\s*<\/span>)/g, '<span class="context">$1</span>') // Modified lookahead
-            .replace(/(\+\S+)/g, '<span class="context">$1</span>')
-            .replace(/(r:\S+)/g, '<span class="context">$1</span>')
-            .replace(/(last:\S+)/g, '<span class="context">$1</span>');
-          */
-
           let taskText = task.Task
           .replace(/\(A\)/g, '<span class="priority-a">(A)</span>')
           .replace(/\(B\)/g, '<span class="priority-b">(B)</span>')
@@ -457,7 +176,7 @@
           })
           .replace(/\b(https?:\/\/\S+)/gi, '<a href="$1" target="_blank">$1</a>')
           .replace(/\b(due:\S+)\b/g, '<span class="context">$1</span>')
-          .replace(/\b(\+\S+)\b/g, '<span class="context">$1</span>')
+          .replace(/([+]\S+)/g, '<span class="context">$1</span>')
           .replace(/\b(r:\S+)\b/g, '<span class="context">$1</span>')
           .replace(/\b(last:\S+)\b/g, '<span class="context">$1</span>')
           .replace(/\b(\s@\S+)\b/g, '<span class="context">$1</span>');
@@ -485,111 +204,6 @@
           selectedTasks.add(0);
           lastSelectedIndex = 0;
         }
-      }
-
-      function sortTasksByDueDate() {
-        allTasks.sort((a, b) => {
-          const aDate = a.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
-          const bDate = b.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
-          return (aDate ? new Date(aDate[1]) : new Date(0)) - (bDate ? new Date(bDate[1]) : new Date(0));
-        });
-        applyFilters();
-      }
-
-      function sortTasksByPriority() {
-        allTasks.sort((a, b) => {
-          // Extract priorities (if they exist)
-          const prioA = extractPriority(a.Task);
-          const prioB = extractPriority(b.Task);
-          
-          // Handle cases where one or both tasks don't have priorities
-          if (!prioA && !prioB) return 0;
-          if (!prioA) return 1;
-          if (!prioB) return -1;
-          
-          return prioA.localeCompare(prioB);
-        });
-        applyFilters();
-      }
-
-      function copySelectedTasks() {
-        const taskList = document.getElementById('taskList');
-        const tasks = taskList.getElementsByClassName('task');
-        const selectedText = Array.from(selectedTasks)
-          .sort((a, b) => a - b)
-          .map(index => tasks[index].textContent)
-          .join('\n');
-		    navigator.clipboard.writeText(selectedText);
-      };
-    
-      function saveFilterSet(number) {
-        const filterSet = {
-          dueState: dueState,
-          priorityState: priorityState,
-          completeState: completeState,
-          searchQuery: document.getElementById('searchBox').value,
-          activeContexts: Array.from(activeContexts)
-        };
-        allFilterSets[number] = filterSet;  // Save to memory
-        
-        // Save all filter sets to a single file
-        google.script.run.saveAllFilterSets(allFilterSets);
-        
-        const htmlContent = `
-          <h2>Filter set saved.</h2>
-          <input type="hidden" value="copy">
-          <div class="buttons">
-            <button class="confirm" autofocus>OK</button>
-            <button class="cancel" style="display: none;">Cancel</button>
-          </div>
-        `;
-        showDialog(htmlContent, () => {});
-      }
-
-      function loadFilterSet(number) {
-        const filterSet = allFilterSets[number];
-        if (filterSet) {
-          applyLoadedFilterSet(filterSet);
-        }
-      }
-
-      function applyLoadedFilterSet(filterSet) {
-        clearFilters();
-        dueState = filterSet.dueState || "All Dates";
-        priorityState = filterSet.priorityState || "All Pri";
-        completeState = filterSet.completeState || "All States";
-        activeContexts = new Set(filterSet.activeContexts);
-        
-        document.getElementById('dueButton').textContent = dueState;
-        document.getElementById('priorityButton').textContent = priorityState;
-        document.getElementById('completeButton').textContent = completeState;
-        document.getElementById('searchBox').value = filterSet.searchQuery;
-        
-        // Update context button states to match loaded filter
-        const contextButtons = document.getElementsByClassName('context-button');
-        Array.from(contextButtons).forEach(button => {
-          if (activeContexts.has(button.dataset.context)) {
-            button.classList.add('selected');
-          }
-        });
-        
-        applyFilters();
-      }
-
-      function clearFilters() {
-        dueState = "All Dates";
-        priorityState = "All Pri";
-        completeState = "All States";
-        document.getElementById('dueButton').textContent = "All Dates";
-        document.getElementById('priorityButton').textContent = "All Pri";
-        document.getElementById('completeButton').textContent = "All States";
-        document.getElementById('searchBox').value = '';
-        const contextButtons = document.getElementsByClassName('context-button');
-        Array.from(contextButtons).forEach(button => {
-          button.classList.remove('selected');
-        });
-        activeContexts.clear();
-        applyFilters();
       }
 
       function swapTasks(filteredIndex1, filteredIndex2) {
@@ -675,35 +289,6 @@
         }, 500);
       }
 
-      function initDragAndDrop() {
-        const taskList = document.getElementById('taskList');
-        let draggedTask = null;
-        let draggedIndex = null;
-
-        taskList.addEventListener('dragstart', (e) => {
-          draggedTask = e.target;
-          draggedIndex = Array.from(taskList.children).indexOf(draggedTask);
-          e.target.style.opacity = '0.5';
-        });
-
-        taskList.addEventListener('dragend', (e) => {
-          e.target.style.opacity = '1';
-        });
-
-        taskList.addEventListener('dragover', (e) => {
-          e.preventDefault();
-        });
-
-        taskList.addEventListener('drop', (e) => {
-          e.preventDefault();
-          const dropTarget = e.target.closest('.task');
-          if (dropTarget && draggedTask) {
-            const dropIndex = Array.from(taskList.children).indexOf(dropTarget);
-            swapTasks(draggedIndex, dropIndex);
-          }
-        });
-      }
-
       // Function to get today's date in user's local time zone in YYYY-MM-DD format
       function getTodayDate() {
         const today = new Date();
@@ -717,248 +302,194 @@
         return tomorrow.toLocaleDateString('en-CA');
       }
 
-      // Function to get the date for the next occurrence of a day of the week in user's local time zone
-      function getNextDayOfWeekDate(dayOfWeek) {
-        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const today = new Date();
-        const todayDayOfWeek = today.getDay();
-        const targetDayOfWeek = daysOfWeek.findIndex(day => day.toLowerCase() === dayOfWeek.toLowerCase());
-        const daysUntilNext = (targetDayOfWeek + 7 - todayDayOfWeek) % 7 || 7;
-        today.setDate(today.getDate() + daysUntilNext);
-        return today.toLocaleDateString('en-CA');
-      }
 
-      // Function to replace due date keywords with actual dates in user's local time zone
-      function replaceDueDateKeywords(task) {
-        return task.replace(/due:today/gi, `due:${getTodayDate()}`)
-                  .replace(/due:tomorrow/gi, `due:${getTomorrowDate()}`)
-                  .replace(/due:(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/gi, (match, day) => `due:${getNextDayOfWeekDate(day)}`);
-      }
 
-      function toggleCompletion(selectedTasks) {
-        const todayDate = getTodayDate();
-        selectedTasks.forEach(task => {
-          if (task.Task.startsWith('x ')) {
-            task.Task = task.Task.replace(/^x \d{4}-\d{2}-\d{2} /, '');
-          } else {
-            task.Task = `x ${todayDate} ${task.Task}`;
-          }
-        });
-      }
 
-/*
-      // Function to open a popup window with a custom dialog
-      function showPopupDialog(htmlContent, callback) {
-        const popup = window.open('', 'popup', 'width=400,height=300');
-        popup.document.write(htmlContent);
-        popup.document.close();
-        const textarea = popup.document.querySelector('textarea');
-        if (textarea) {
-          textarea.focus();
-        }
-        popup.document.querySelector('.confirm').onclick = () => {
-          const input = popup.document.querySelector('input, textarea').value;
-          callback(input);
-          popup.close();
-        };
-        popup.document.querySelector('.cancel').onclick = () => {
-          callback(false);
-          popup.close();
-        };
-      }
-*/
-
-      function editTask(index) {
-        const task = allTasks[index];
-        const htmlContent = `
-          <h2>Edit Task</h2>
-          <div id="calendar"></div>
-          <textarea autofocus>${task.Task}</textarea>
-          <div class="buttons">
-            <button class="confirm">Save</button>
-            <button class="cancel">Cancel</button>
-          </div>
-        `;
-        
-        showDialog(htmlContent, (newTask) => {
-          if (newTask !== null) {
-            allTasks[index].Task = replaceDueDateKeywords(newTask);
-            applyFilters();
-          }
-        });
-
-        // Position cursor at end
-        setTimeout(() => {
-          const textarea = document.querySelector('.sidebar-dialog textarea');
-          textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
-        }, 50);
-      }
 
       class Calendar {
-        constructor(container, options) {
+        constructor(container, options = {}) {
           this.container = container;
-          this.onChange = options.onChange;
+          this.onChange = options.onChange || (() => {});
+          this.selectedDate = null;
           this.currentDate = new Date();
           this.render();
         }
 
         render() {
-          // Calendar rendering logic here
+          const monthNames = ["January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"];
+          
+          const calendar = document.createElement('div');
+          calendar.className = 'calendar';
+          
+          // Header with month/year and navigation
+          const header = document.createElement('div');
+          header.className = 'calendar-header';
+          header.innerHTML = `
+            <button class="prev-month">&lt;</button>
+            <span>${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}</span>
+            <button class="next-month">&gt;</button>
+          `;
+          
+          calendar.appendChild(header);
+          
+          // Calendar grid
+          const grid = document.createElement('div');
+          grid.className = 'calendar-grid';
+
+          // Days of week header
+          const daysOfWeek = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+          const daysHeader = document.createElement('div');
+          daysHeader.className = 'calendar-days-header';
+
+          daysOfWeek.forEach(day => {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'calendar-day';
+            dayDiv.textContent = day;
+            grid.appendChild(dayDiv);
+          });
+
+          calendar.appendChild(daysHeader);
+
+
+          
+          const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+          const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
+          const startingDay = firstDay.getDay();
+          
+          // Add empty cells for days before the first of the month
+          for (let i = 0; i < startingDay; i++) {
+            const emptyDay = document.createElement('div');
+            emptyDay.className = 'calendar-day empty';
+            grid.appendChild(emptyDay);
+          }
+          
+          // Add days of the month
+          for (let day = 1; day <= lastDay.getDate(); day++) {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'calendar-day';
+            dayDiv.textContent = day;
+            
+            const date = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
+            dayDiv.dataset.date = date.toISOString().split('T')[0];
+            
+            if (this.selectedDate === dayDiv.dataset.date) {
+              dayDiv.classList.add('selected');
+            }
+            
+            dayDiv.addEventListener('click', () => {
+              const oldSelected = grid.querySelector('.selected');
+              if (oldSelected) oldSelected.classList.remove('selected');
+              
+              dayDiv.classList.add('selected');
+              this.selectedDate = dayDiv.dataset.date;
+              this.onChange(this.selectedDate);
+            });
+            
+            grid.appendChild(dayDiv);
+          }
+          
+          calendar.appendChild(grid);
+          
+          // Event listeners for navigation
+          header.querySelector('.prev-month').addEventListener('click', () => {
+            this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+            this.render();
+          });
+          
+          header.querySelector('.next-month').addEventListener('click', () => {
+            this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+            this.render();
+          });
+          
+          // Replace existing calendar if any
+          this.container.innerHTML = '';
+          this.container.appendChild(calendar);
         }
       }
 
       function initCalendar(container) {
-        const calendar = new Calendar(container, {
-          onChange: (date) => {
-            const textarea = document.querySelector('.sidebar-dialog textarea');
-            const dueDate = date.toISOString().split('T')[0];
-            textarea.value = textarea.value.replace(/due:\d{4}-\d{2}-\d{2}/, '') + 
-              ` due:${dueDate}`;
-          }
-        });
-        return calendar;
-      }
-
-      function addNewTask() {
-        const htmlContent = `
-          <h2>New Task</h2>
-          <div id="calendar"></div>
-          <textarea placeholder="Enter the new task" autofocus>(</textarea>
-          <div class="buttons">
-            <button class="confirm">Add</button>
-            <button class="cancel">Cancel</button>
+        const calendar = document.createElement('div');
+        calendar.className = 'calendar';
+        container.appendChild(calendar);
+        
+        const date = new Date();
+        const currentMonth = date.getMonth();
+        const currentYear = date.getFullYear();
+        
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"];
+          
+        calendar.innerHTML = `
+          <div class="calendar-header">
+            <button class="prev-month">&lt;</button>
+            <span>${monthNames[currentMonth]} ${currentYear}</span>
+            <button class="next-month">&gt;</button>
+          </div>
+          <div class="calendar-grid">
+            ${generateCalendarDays(currentYear, currentMonth)}
           </div>
         `;
         
-        showDialog(htmlContent, (newTask) => {
-          if (newTask) {
-            allTasks.unshift({ TaskID: allTasks.length, Task: replaceDueDateKeywords(newTask) });
-            applyFilters();
-          }
+        // Add event listeners for navigation and date selection
+        const prevButton = calendar.querySelector('.prev-month');
+        const nextButton = calendar.querySelector('.next-month');
+        
+        prevButton.addEventListener('click', () => {
+          date.setMonth(date.getMonth() - 1);
+          updateCalendar(calendar, date);
         });
-
-        // Position cursor after (
-        setTimeout(() => {
-          const textarea = document.querySelector('.sidebar-dialog textarea');
-          textarea.selectionStart = textarea.selectionEnd = 1;
-        }, 50);
+        
+        nextButton.addEventListener('click', () => {
+          date.setMonth(date.getMonth() + 1);
+          updateCalendar(calendar, date);
+        });
+        
+        return calendar;
       }
 
-      function setDateForSelectedTasks() {
-        const htmlContent = `
-          <h2>Set Due Date</h2>
-          <input type="text" placeholder="Enter the new date (YYYY-MM-DD, today, tomorrow, or day of the week)">
-          <div class="buttons">
-            <button class="confirm">Set Date</button>
-            <button class="cancel">Cancel</button>
-          </div>
-        `;
-        showDialog(htmlContent, (newDate) => {
-          if (newDate) {
-            const originalIndices = getOriginalIndices();
-            const formattedDate = replaceDueDateKeywords(`due:${newDate}`).split('due:')[1];
-            originalIndices.forEach(index => {
-              allTasks[index].Task = allTasks[index].Task.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${formattedDate}`);
-            });
-            applyFilters();
+      function generateCalendarDays(year, month) {
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const startDay = firstDay.getDay();
+        const daysInMonth = lastDay.getDate();
+        
+        let html = '<div class="weekdays">Su Mo Tu We Th Fr Sa</div>';
+        let day = 1;
+        
+        for (let i = 0; i < 6; i++) {
+          html += '<div class="week">';
+          for (let j = 0; j < 7; j++) {
+            if ((i === 0 && j < startDay) || day > daysInMonth) {
+              html += '<span class="empty"></span>';
+            } else {
+              html += `<span class="day" data-date="${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}">${day}</span>`;
+              day++;
+            }
           }
-        });
+          html += '</div>';
+          if (day > daysInMonth) break;
+        }
+        
+        return html;
       }
 
-      function deleteTask(index) {
-        const task = allTasks[index];
-        const htmlContent = `
-          <h2>Delete Task(s)</h2>
-          <input type=hidden value="delete">
-          <p>Are you sure?</p>
-          <div class="buttons">
-            <button class="confirm" data-confirmed="true">Delete</button>
-            <button class="cancel" data-confirmed="false">Cancel</button>
-          </div>
-        `;
-        showDialog(htmlContent, (confirmed) => {
-          if (confirmed) {
-            const originalIndices = getOriginalIndices().sort((a, b) => b - a);  // Sort in reverse order
-            originalIndices.forEach(idx => {
-              allTasks.splice(idx, 1);
-            });
-            applyFilters();
-          }
-        });
+      function updateCalendar(calendar, date) {
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+          "July", "August", "September", "October", "November", "December"];
+        
+        calendar.querySelector('.calendar-header span').textContent = 
+          `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+        
+        calendar.querySelector('.calendar-grid').innerHTML = 
+          generateCalendarDays(date.getFullYear(), date.getMonth());
       }
 
-      function changePriority(tasks, increase) {
-        tasks.forEach(task => {
-          const currentPriority = extractPriority(task.Task);
-          if (!currentPriority) return;
-          
-          const currentIndex = validPriorities.indexOf(currentPriority);
-          if (currentIndex === -1) return;
-          
-          const newIndex = increase ? 
-            Math.max(0, currentIndex - 1) : 
-            Math.min(validPriorities.length - 1, currentIndex + 1);
-          
-          task.Task = task.Task.replace(/\([A-I]\)/, `(${validPriorities[newIndex]})`);
-        });
-      }
 
-      function setPriorityForSelectedTasks() {
-        const htmlContent = `
-          <h2>Set Priority</h2>
-          <input type="text" 
-                placeholder="(A, B, C...)" 
-                maxlength="1" 
-                pattern="[A-Za-z]"
-                onkeydown="return /[a-zA-Z]/i.test(event.key) || event.key === 'Backspace' || event.key === 'Delete' || event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Tab'"
-                style="text-transform: uppercase;">
-          <div class="buttons">
-            <button class="confirm">Set Priority</button>
-            <button class="cancel">Cancel</button>
-          </div>
-        `;
-        showDialog(htmlContent, (newPriority) => {
-          if (newPriority && /^[A-Za-z]$/.test(newPriority)) {
-            const originalIndices = getOriginalIndices();
-            originalIndices.forEach(index => {
-              const currentPriority = extractPriority(allTasks[index].Task);
-              if (currentPriority) {
-                allTasks[index].Task = allTasks[index].Task.replace(/\([A-D]\)/, `(${newPriority.toUpperCase()})`);
-              } else {
-                allTasks[index].Task = `(${newPriority.toUpperCase()}) ${allTasks[index].Task}`;
-              }
-            });
-            applyFilters();
-          }
-        });
-      }
-      // Function to postpone selected tasks
-      function postponeSelectedTasks() {
-        const htmlContent = `
-        <h2>Delay</h2>
-        <input type="number" placeholder="Enter the number of days to delay task">
-        <div class="buttons">
-            <button class="confirm">Delay</button>
-            <button class="cancel">Cancel</button>
-          </div>
-        `;
-        showDialog(htmlContent, (days) => {
-          if (days) {
-			      const originalIndices = getOriginalIndices();
-            originalIndices.forEach(index => {
-              const task = allTasks[index];
-              const dueDateMatch = task.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
-              if (dueDateMatch) {
-                const dueDate = new Date(dueDateMatch[1]);
-                dueDate.setDate(dueDate.getDate() + parseInt(days));
-                const newDueDate = dueDate.toISOString().split('T')[0];
-                allTasks[index].Task = task.Task.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${newDueDate}`);
-              }
-            });
-            applyFilters();
-          }
-        });
-      }
+/* Left off here breaking into individual files */
+
+
+
 
       function showDialog(htmlContent, callback) {
         const dialogContainer = document.getElementById('dialogContainer');
@@ -982,6 +513,13 @@
         };
 
         const handleOutsideClick = (e) => {
+          // Prevent closing if clicking calendar navigation buttons
+          if (e.target.classList.contains('prev-month') || 
+              e.target.classList.contains('next-month')) {
+            e.stopPropagation();
+            return;
+          }
+          
           if (!dialog.contains(e.target)) {
             closeDialog();
           }
@@ -1048,6 +586,35 @@
           cancelButton.onclick = closeDialog;
         }
 
+        // Initialize calendar after dialog content is rendered
+        const calendarContainer = dialog.querySelector('#calendar');
+        if (calendarContainer) {
+          // Wait for DOM to be fully rendered
+          setTimeout(() => {
+            const calendar = new Calendar(calendarContainer, {
+              onChange: (date) => {
+                const textarea = dialog.querySelector('textarea');
+                if (textarea) {
+                  const cursorPos = textarea.selectionStart;
+                  const textBefore = textarea.value.substring(0, cursorPos);
+                  const textAfter = textarea.value.substring(textarea.selectionEnd);
+                  
+                  // Check if there's already a due date
+                  const dueDate = textarea.value.match(/due:\d{4}-\d{2}-\d{2}/);
+                  if (dueDate) {
+                    textarea.value = textarea.value.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${date}`);
+                  } else {
+                    textarea.value = textBefore + ` due:${date} ` + textAfter;
+                  }
+                  
+                  textarea.focus();
+                }
+              }
+            });
+          }, 0);
+        }
+
+        // Add event listeners after a short delay
         setTimeout(() => {
           document.addEventListener('click', handleOutsideClick);
           document.addEventListener('keydown', handleEscapeKey);
@@ -1116,38 +683,243 @@
           showDialog(htmlContent, () => {});
         }
       }
-
       function loadNewFile() {
-        const htmlContent = `
-          <h2>Load ToDo.txt File</h2>
-          <p>Please enter the Google Drive File ID for your task file:</p>
-          <input type="text" placeholder="Enter File ID">
-          <div id="fileIdError" style="color: red; margin-top: 10px;"></div>
-          <div class="buttons">
-            <button class="confirm">Load File</button>
-            <button class="cancel">Cancel</button>
-          </div>
+        const dialogContent = `
+          <h2>Loading Files...</h2>
+          <p>Searching for todo files in your Google Drive...</p>
         `;
+        
+        showDialog(dialogContent, null);
+        
+        google.script.run
+          .withSuccessHandler((files) => {
+            const fileList = files && files.length > 0 ? files.map(file => `
+              <div class="file-item" data-id="${file.id}">
+                <span class="file-name">${file.name}</span>
+                <span class="file-info">
+                  Modified: ${new Date(file.date).toLocaleString()}
+                  (${(file.size / 1024).toFixed(1)} KB)
+                </span>
+              </div>
+            `).join('') : '';
+            
+            const htmlContent = `
+              <h2>Todo Files</h2>
+              ${files && files.length > 0 ? `
+                <p>Select an existing todo file or create a new one:</p>
+                <div class="file-browser">
+                  ${fileList}
+                </div>
+              ` : `
+                <p>No existing todo files found.</p>
+              `}
+              <div class="new-file-section">
+                <button class="button new-file-button">Create New Todo File</button>
+              </div>
+              <div class="buttons">
+                ${files && files.length > 0 ? `
+                  <button class="confirm" disabled>Select File</button>
+                ` : ''}
+                <button class="cancel">Cancel</button>
+              </div>
+            `;
 
-        showDialog(htmlContent, (fileId) => {
-          if (fileId) {
-            google.script.run
-              .withSuccessHandler((success) => {
-                if (success) {
-                  window.top.location.reload();
-                } else {
-                  const errorDiv = document.getElementById('fileIdError');
-                  if (errorDiv) {
-                    errorDiv.textContent = 'Invalid File ID. Please check and try again.';
+            const handleFileCreation = () => {
+              const createFileContent = `
+                <h2>Create New Todo File</h2>
+                <input type="text" 
+                      placeholder="Enter file name (e.g., todo.txt)" 
+                      value="todo.txt"
+                      pattern=".+\\.txt$">
+                <p class="input-hint">File name must end with .txt</p>
+                <div class="buttons">
+                  <button class="confirm">Create</button>
+                  <button class="cancel">Cancel</button>
+                </div>
+              `;
+
+              showDialog(createFileContent, (fileName) => {
+                if (fileName) {
+                  if (!fileName.toLowerCase().endsWith('.txt')) {
+                    fileName += '.txt';
                   }
+
+                  const loadingContent = `
+                    <h2>Creating File...</h2>
+                    <p>Please wait while we set up your new todo file.</p>
+                  `;
+                  showDialog(loadingContent, null);
+
+                  google.script.run
+                    .withSuccessHandler((fileId) => {
+                      if (fileId) {
+                        // First set up the file ID
+                        google.script.run
+                          .withSuccessHandler((success) => {
+                            if (success) {
+                              const successContent = `
+                                <h2>File Created</h2>
+                                <p>Your new todo file has been created and set up.</p>
+                                <p>Please press CTRL-R to refresh the to-do list.</p>
+                                <div class="buttons">
+                                  <button class="confirm" autofocus>OK</button>
+                                </div>
+                              `;
+                              showDialog(successContent, () => {
+                                setTimeout(() => {
+                                  window.top.location.reload();
+                                }, 100);
+                              });
+                            } else {
+                              const errorContent = `
+                                <h2>Error</h2>
+                                <p>Failed to set up the new file.</p>
+                                <div class="buttons">
+                                  <button class="confirm" autofocus>OK</button>
+                                </div>
+                              `;
+                              showDialog(errorContent, () => {});
+                            }
+                          })
+                          .withFailureHandler((error) => {
+                            const errorContent = `
+                              <h2>Error</h2>
+                              <p>Failed to set up file: ${error}</p>
+                              <div class="buttons">
+                                <button class="confirm" autofocus>OK</button>
+                              </div>
+                            `;
+                            showDialog(errorContent, () => {});
+                          })
+                          .setupFileId(fileId);
+                      } else {
+                        const errorContent = `
+                          <h2>Error</h2>
+                          <p>Failed to create the new file.</p>
+                          <div class="buttons">
+                            <button class="confirm" autofocus>OK</button>
+                          </div>
+                        `;
+                        showDialog(errorContent, () => {});
+                      }
+                    })
+                    .withFailureHandler((error) => {
+                      const errorContent = `
+                        <h2>Error</h2>
+                        <p>Failed to create file: ${error}</p>
+                        <div class="buttons">
+                          <button class="confirm" autofocus>OK</button>
+                        </div>
+                      `;
+                      showDialog(errorContent, () => {});
+                    })
+                    .createNewTodoFile(fileName);
                 }
-              })
-              .setupFileId(fileId);
-          }
-        });
+              });
+            };
+      
+      // Rest of the existing code...
+            
+            // Single function to handle file selection
+            const handleFileSelection = (fileId) => {
+              const loadingContent = `
+                <h2>Loading File...</h2>
+                <p>Please wait while we set up your todo file.</p>
+              `;
+              showDialog(loadingContent, null);
+              
+              google.script.run
+                .withSuccessHandler((success) => {
+                  if (success) {
+                    const successContent = `
+                      <h2>File Loaded</h2>
+                      <p>Please press CTRL-R to refresh the to-do list.</p>
+                      <div class="buttons">
+                        <button class="confirm" autofocus>OK</button>
+                      </div>
+                    `;
+                    showDialog(successContent, () => {
+                      setTimeout(() => {
+                        window.top.location.reload();
+                      }, 100);
+                    });
+                  } else {
+                    const errorContent = `
+                      <h2>Error</h2>
+                      <p>Failed to load the selected file.</p>
+                      <div class="buttons">
+                        <button class="confirm" autofocus>OK</button>
+                      </div>
+                    `;
+                    showDialog(errorContent, () => {});
+                  }
+                })
+                .withFailureHandler((error) => {
+                  const errorContent = `
+                    <h2>Error</h2>
+                    <p>Failed to set up file: ${error}</p>
+                    <div class="buttons">
+                      <button class="confirm" autofocus>OK</button>
+                    </div>
+                  `;
+                  showDialog(errorContent, () => {});
+                })
+                .setupFileId(fileId);
+            };
+            
+            showDialog(htmlContent, () => {});
+
+            // Get dialog elements after the dialog is shown
+            const dialog = document.querySelector('.sidebar-dialog');
+            const fileItems = dialog.querySelectorAll('.file-item');
+            const confirmButton = dialog.querySelector('.confirm');
+            const newFileButton = dialog.querySelector('.new-file-button');
+            let selectedFileId = null;
+
+            // Add click handlers for file selection
+            fileItems.forEach(item => {
+              item.addEventListener('click', () => {
+                fileItems.forEach(f => f.classList.remove('selected'));
+                item.classList.add('selected');
+                selectedFileId = item.dataset.id;
+                if (confirmButton) confirmButton.disabled = false;
+              });
+
+              item.addEventListener('dblclick', () => {
+                if (item.dataset.id) {
+                  handleFileSelection(item.dataset.id);
+                }
+              });
+            });
+
+            // Add click handler for new file button
+            if (newFileButton) {
+              newFileButton.addEventListener('click', handleFileCreation);
+            }
+
+            // Update confirm button handler
+            if (confirmButton) {
+              confirmButton.onclick = () => {
+                if (selectedFileId) {
+                  handleFileSelection(selectedFileId);
+                }
+              };
+            }
+          })
+          .withFailureHandler((error) => {
+            const errorContent = `
+              <h2>Error</h2>
+              <p>Failed to list todo files: ${error}</p>
+              <div class="buttons">
+                <button class="confirm" autofocus>OK</button>
+              </div>
+            `;
+            showDialog(errorContent, () => {});
+          })
+          .listTodoFiles();
       }
 
-      // automatically save waiting for 'saveTimeout' milliseconds
+       // automatically save waiting for 'saveTimeout' milliseconds
       let timeoutId;
       // Function to listen for keyboard input
       function listenForKeyboardInput() {
@@ -1199,7 +971,36 @@
         const taskList = document.getElementById('taskList');
         const tasks = taskList.getElementsByClassName('task');
         if (lastSelectedIndex === -1) return;
-
+        if (event.altKey && event.key.toLowerCase() === 'x') {
+          event.preventDefault();
+          const originalIndices = getOriginalIndices().sort((a, b) => b - a);
+          cutTasks = originalIndices.map(index => {
+            const task = allTasks[index];
+            return { ...task };
+          });
+          // Remove tasks from original list
+          originalIndices.forEach(index => {
+            allTasks.splice(index, 1);
+          });
+          updateValidPriorities();
+          applyFilters();
+        } else if (event.altKey && event.key.toLowerCase() === 'i') {
+          event.preventDefault();
+          if (cutTasks.length > 0) {
+            const selectedIndex = lastSelectedIndex !== -1 ? 
+              filteredTasks[lastSelectedIndex].originalIndex : 0;
+            
+            // Insert cut tasks at the selected position
+            cutTasks.reverse().forEach(task => {
+              allTasks.splice(selectedIndex, 0, task);
+            });
+            
+            // Clear cut tasks buffer
+            cutTasks = [];
+            updateValidPriorities();
+            applyFilters();
+          }
+        }
         if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
           const taskList = document.getElementById('taskList');
           const tasks = taskList.getElementsByClassName('task');
@@ -1326,7 +1127,7 @@
           event.preventDefault();
           document.getElementById('searchBox').focus();
           return;
-        } else if (event.key === 'h') {
+        } else if (event.key === '?') {
           event.preventDefault();
           showHelpWindow();
         } else if (event.key === '(') {
@@ -1382,43 +1183,6 @@
 	    // Add this line to focus the page on load
 	    window.onload = () => document.body.focus();
 
-/*
-      document.addEventListener('DOMContentLoaded', function() {
-        google.script.run
-          .withSuccessHandler(function(result) {
-            lastModifiedTime = result.lastModified;
-            lastSavedTime = result.lastModified;
-            
-            // Store tasks but don't display them yet
-            allTasks = result.tasks;
-            
-            // Load filter sets and then display tasks
-            google.script.run
-              .withSuccessHandler(function(filterSets) {
-                allFilterSets = filterSets || {};
-                if (filterSets['1']) {
-                  loadFilterSet('1');  // This will trigger applyFilters()
-                } else {
-                  // If no filter set 1, then apply default display
-                  applyFilters();
-                }
-              })
-              .getAllFilterSets();
-          })
-          .getTasksAndModifiedTime();
-
-        google.script.run
-          .withSuccessHandler((fileId) => {
-            if (!fileId) {
-              loadNewFile();
-            } else {
-              loadTasks();
-            }
-          })
-          .getStoredFileId();
-      });
-*/
-
       document.addEventListener('DOMContentLoaded', function() {
         google.script.run
           .withSuccessHandler(function(result) {
@@ -1445,42 +1209,7 @@
           .getTasksAndModifiedTime();
       });
 
-/*
-      document.addEventListener('DOMContentLoaded', function() {
-        // Add the keyboard event listener to the document body
-        document.body.addEventListener('keydown', handleKeyDown);
-        
-        google.script.run
-          .withSuccessHandler(function(result) {
-            lastModifiedTime = result.lastModified;
-            lastSavedTime = result.lastModified;
-            
-            // Store tasks but don't display them yet
-            allTasks = result.tasks;
-            generateContextButtons();
-            
-            // Load filter sets and then display tasks
-            google.script.run
-              .withSuccessHandler(function(filterSets) {
-                allFilterSets = filterSets || {};
-                if (filterSets['1']) {
-                  loadFilterSet('1');  // This will trigger applyFilters()
-                } else {
-                  // If no filter set 1, then apply default display
-                  applyFilters();
-                }
-              })
-              .getAllFilterSets();
-          })
-          .getTasksAndModifiedTime();
-      });
-*/
-
-      
-      document.addEventListener('keydown', handleKeyDown);
-      document.addEventListener('DOMContentLoaded', () => {
-        initDragAndDrop();
-      });      
+      document.addEventListener('keydown', handleKeyDown);    
 	  
 	    // Add this line to focus the page on load
 	    window.onload = () => document.body.focus();

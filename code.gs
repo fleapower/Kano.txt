@@ -1,6 +1,7 @@
 function doGet() {
   try {
-    return HtmlService.createHtmlOutputFromFile('index')
+    return HtmlService.createTemplateFromFile('index')
+      .evaluate()
       .setFaviconUrl('https://drive.google.com/uc?export=download&id=1L6RQug6xKYBAE36KeUvNXJ_f6qMasSbI&format=png');
   } catch (e) {
     return HtmlService.createHtmlOutput(`
@@ -8,6 +9,64 @@ function doGet() {
       <p>${e.message}</p>
       <button onclick="window.top.location.reload()">Retry</button>
     `);
+  }
+}
+
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename)
+      .getContent();
+}
+
+function listTodoFiles() {
+  try {
+    const files = DriveApp.getFilesByType(MimeType.PLAIN_TEXT);
+    const todoFiles = [];
+
+    Logger.log('Started processing files');
+
+    while (files.hasNext()) {
+      const file = files.next();
+      const fileName = file.getName().toLowerCase();
+      
+      Logger.log('Processing file: ' + fileName);
+
+      if (fileName.includes('todo') && fileName.endsWith('.txt')) {
+        todoFiles.push({
+          id: file.getId(),
+          name: file.getName(),
+          date: file.getLastUpdated().getTime(), // Convert Date to timestamp
+          size: file.getSize()
+        });
+
+        Logger.log('Added file: ' + fileName);
+      }
+    }
+
+    todoFiles.sort((a, b) => b.date - a.date);
+
+    Logger.log(`Found ${todoFiles.length} todo files`);
+
+    todoFiles.forEach(file => {
+      Logger.log(`File: ${file.name}, ID: ${file.id}, Last Updated: ${new Date(file.date)}, Size: ${file.size}`);
+    });
+
+    return todoFiles;
+
+  } catch (error) {
+    Logger.log('Error in listTodoFiles: ' + error.toString());
+    throw new Error('Failed to list todo files: ' + error.message);
+  }
+}
+
+function createNewTodoFile(fileName) {
+  try {
+    const file = DriveApp.createFile(fileName, '', 'text/plain');
+    const fileId = file.getId();
+    PropertiesService.getUserProperties().setProperty('TODO_FILE_ID', fileId);
+    return fileId;
+  } catch (error) {
+    Logger.log('Error creating new todo file: ' + error.toString());
+    return null;
   }
 }
 

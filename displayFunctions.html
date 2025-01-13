@@ -105,29 +105,62 @@
               andGroups.some(group => group.every(term => lowerTaskText.includes(term)));
       }
 
+      function cycleSortState() {
+        const sortButton = document.getElementById('sortButton');
+        
+        switch (currentSortState) {
+          case 'file':
+            sortTasksByDueDate();
+            sortButton.textContent = 'Sort: Date';
+            currentSortState='date';
+            displaySortedTasks();
+            break;
+          case 'date':
+            sortTasksByPriority();
+            sortButton.textContent = 'Sort: Priority';
+            currentSortState='priority';
+            displaySortedTasks();
+            break;
+          case 'priority':
+            currentSortState = 'file';
+            sortButton.textContent = 'Sort: File';
+            currentSortState='file';
+            applyFilters();
+            break;
+        }
+      }
+
       function sortTasksByDueDate() {
-        allTasks.sort((a, b) => {
-          const aDate = a.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
-          const bDate = b.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
+        
+        // Create a new sorted array instead of modifying allTasks
+        filteredTasks.sort((a, b) => {
+          const aDate = a.task.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
+          const bDate = b.task.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
           return (aDate ? new Date(aDate[1]) : new Date(0)) - (bDate ? new Date(bDate[1]) : new Date(0));
         });
-        applyFilters();
+        
+        // Refresh the display without saving
+        const taskList = document.getElementById('taskList');
+        taskList.innerHTML = '';
       }
 
       function sortTasksByPriority() {
-        allTasks.sort((a, b) => {
-          // Extract priorities (if they exist)
-          const prioA = extractPriority(a.Task);
-          const prioB = extractPriority(b.Task);
+        
+        // Create a new sorted array instead of modifying allTasks
+        filteredTasks.sort((a, b) => {
+          const prioA = extractPriority(a.task.Task);
+          const prioB = extractPriority(b.task.Task);
           
-          // Handle cases where one or both tasks don't have priorities
           if (!prioA && !prioB) return 0;
           if (!prioA) return 1;
           if (!prioB) return -1;
           
           return prioA.localeCompare(prioB);
         });
-        applyFilters();
+        
+        // Refresh the display without saving
+        const taskList = document.getElementById('taskList');
+        taskList.innerHTML = '';
       }
 
       function copySelectedTasks() {
@@ -167,9 +200,11 @@
         dueState = "All Dates";
         priorityState = "All Pri";
         completeState = "All States";
+        currentSortState = "file";
         document.getElementById('dueButton').textContent = "All Dates";
         document.getElementById('priorityButton').textContent = "All Pri";
         document.getElementById('completeButton').textContent = "All States";
+        document.getElementById('sortButton').textContent = "Sort: File";
         document.getElementById('searchBox').value = '';
         const contextButtons = document.getElementsByClassName('context-button');
         Array.from(contextButtons).forEach(button => {

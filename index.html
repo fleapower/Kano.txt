@@ -14,9 +14,8 @@
         <button class="button" id="completeButton" onclick="cycleCompleteState()">All States</button>
         <button class="button" id="dueButton" onclick="cycleDueState()">All Dates</button>
         <button class="button" id="priorityButton" onclick="cyclePriorityState()">All Pri</button>
+        <button class="button" id="sortButton" onclick="cycleSortState()">Sort: File</button>
         <button class="button" onclick="clearFilters()">Clear Filters</button>
-        <button class="button" onclick="sortTasksByDueDate()">Sort by Due Date</button>
-        <button class="button" onclick="sortTasksByPriority()">Sort by Priority</button>
         <input type="text" id="searchBox" placeholder="Find..." oninput="applyFilters()">
 
         <script>
@@ -46,6 +45,7 @@
       let dueState = "All Dates";
       let priorityState = "All Pri";
       let completeState = "All States";  // Can be "All States", "Complete", or "Pending"
+      let currentSortState = 'file'; // Can be 'file', 'date', or 'priority'
       let validPriorities = [];
       let cutTasks = [];
 
@@ -68,7 +68,6 @@
 
       function displayTasks(tasks) {
         allTasks = tasks;
-        updateValidPriorities(); // Call updateValidPriorities here
         generateContextButtons();
         applyFilters();
       }
@@ -116,11 +115,81 @@
         return match ? match[1] : null;
       }
 
-      function applyFilters() {
-        const searchBox = document.getElementById('searchBox');
-        const searchQuery = searchBox.value;
+      function displaySortedTasks() {
+        switch (currentSortState) {
+          case 'date':
+            sortTasksByDueDate();
+            break;
+          case 'priority':
+            sortTasksByPriority();
+            break;
+          default:
+            break;
+        }
         const taskList = document.getElementById('taskList');
         taskList.innerHTML = '';
+        
+        filteredTasks.forEach(({ task, originalIndex }, filteredIndex) => {
+          const div = document.createElement('div');
+          div.className = 'task';
+          div.dataset.taskId = task.TaskID;
+          div.dataset.originalIndex = originalIndex;
+          div.dataset.filteredIndex = filteredIndex;
+          div.onclick = (event) => handleTaskClick(event, filteredIndex);
+
+          // Task display formatting
+          let taskText = task.Task
+            .replace(/\(A\)/g, '<span class="priority-a">(A)</span>')
+            .replace(/\(B\)/g, '<span class="priority-b">(B)</span>')
+            .replace(/\(C\)/g, '<span class="priority-c">(C)</span>')
+            .replace(/\(D\)/g, '<span class="priority-d">(D)</span>')
+            .replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function(match) {
+              return `<a href="mailto:${match}" target="_blank">${match}</a>`;
+            })
+            .replace(/\b(https?:\/\/\S+)/gi, '<a href="$1" target="_blank">$1</a>')
+            .replace(/\b(due:\S+)\b/g, '<span class="context">$1</span>')
+            .replace(/([+]\S+)/g, '<span class="context">$1</span>')
+            .replace(/\b(r:\S+)\b/g, '<span class="context">$1</span>')
+            .replace(/\b(last:\S+)\b/g, '<span class="context">$1</span>')
+            .replace(/\b(\s@\S+)\b/g, '<span class="context">$1</span>');
+
+          const dueDate = taskText.substring(taskText.indexOf('due:') + 4, taskText.indexOf('due:') + 14);
+          const today = getTodayDate();
+          if (dueDate < today) {
+            taskText = `<span class="overdue-task">${taskText}</span>`;
+          }
+
+          if (task.Task.startsWith('x ')) {
+            taskText = `<span class="complete-task">${taskText}</span>`;
+          }
+
+          div.innerHTML = taskText;
+          taskList.appendChild(div);
+        });
+
+        updateTaskCount();
+
+        if (lastSelectedIndex === -1 && taskList.children.length > 0) {
+          const firstTask = taskList.children[0];
+          firstTask.classList.add('selected');
+          selectedTasks.clear();
+          selectedTasks.add(0);
+          lastSelectedIndex = 0;
+        }
+
+      }
+
+      function applyFilters() {
+        /*
+        if (currentSortState !== 'file') {
+          currentSortState = 'file';
+        }
+        */
+
+        updateValidPriorities(); // update in case they have been changed
+        
+        const searchBox = document.getElementById('searchBox');
+        const searchQuery = searchBox.value;
         
         // Split search terms while preserving quoted strings and AND groups
         const searchTerms = searchQuery.match(/(?:[^\s"]+|"[^"]*")+/g) || [''];
@@ -157,56 +226,15 @@
             return matchesDue && matchesComplete && matchesSearch && matchesPriority && matchesContexts;
           });
 
-        filteredTasks.forEach(({ task, originalIndex }, filteredIndex) => {
-          const div = document.createElement('div');
-          div.className = 'task';
-          div.dataset.taskId = task.TaskID;
-          div.dataset.originalIndex = originalIndex;
-          div.dataset.filteredIndex = filteredIndex;
-          div.onclick = (event) => handleTaskClick(event, filteredIndex, originalIndex);
-
-          // Existing task display formatting...
-          let taskText = task.Task
-          .replace(/\(A\)/g, '<span class="priority-a">(A)</span>')
-          .replace(/\(B\)/g, '<span class="priority-b">(B)</span>')
-          .replace(/\(C\)/g, '<span class="priority-c">(C)</span>')
-          .replace(/\(D\)/g, '<span class="priority-d">(D)</span>')
-          .replace(/\b([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\b/g, function(match) {
-            return `<a href="mailto:${match}" target="_blank">${match}</a>`;
-          })
-          .replace(/\b(https?:\/\/\S+)/gi, '<a href="$1" target="_blank">$1</a>')
-          .replace(/\b(due:\S+)\b/g, '<span class="context">$1</span>')
-          .replace(/([+]\S+)/g, '<span class="context">$1</span>')
-          .replace(/\b(r:\S+)\b/g, '<span class="context">$1</span>')
-          .replace(/\b(last:\S+)\b/g, '<span class="context">$1</span>')
-          .replace(/\b(\s@\S+)\b/g, '<span class="context">$1</span>');
-
-          const dueDate = taskText.substring(taskText.indexOf('due:') + 4, taskText.indexOf('due:') + 14);
-          const today = getTodayDate();
-          if (dueDate < today) {
-            taskText = `<span class="overdue-task">${taskText}</span>`;
-          }
-
-          if (task.Task.startsWith('x ')) {
-            taskText = `<span class="complete-task">${taskText}</span>`;
-          }
-
-          div.innerHTML = taskText;
-          taskList.appendChild(div);
-        });
-
-        updateTaskCount();
-
-        if (lastSelectedIndex === -1 && taskList.children.length > 0) {
-          const firstTask = taskList.children[0];
-          firstTask.classList.add('selected');
-          selectedTasks.clear();
-          selectedTasks.add(0);
-          lastSelectedIndex = 0;
-        }
+        // Display the filtered (and possibly sorted) tasks
+        displaySortedTasks();
       }
 
       function swapTasks(filteredIndex1, filteredIndex2) {
+        if (currentSortState !== 'file') {
+          // Don't allow swapping when sorted
+          return;
+        }
         // Get the original indices from the filtered tasks
         const originalIndex1 = filteredTasks[filteredIndex1].originalIndex;
         const originalIndex2 = filteredTasks[filteredIndex2].originalIndex;
@@ -302,16 +330,13 @@
         return tomorrow.toLocaleDateString('en-CA');
       }
 
-
-
-
-
       class Calendar {
         constructor(container, options = {}) {
           this.container = container;
           this.onChange = options.onChange || (() => {});
           this.selectedDate = null;
           this.currentDate = new Date();
+          this.today = new Date().toISOString().split('T')[0]; // Store today's date in YYYY-MM-DD format
           this.render();
         }
 
@@ -339,19 +364,12 @@
 
           // Days of week header
           const daysOfWeek = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-          const daysHeader = document.createElement('div');
-          daysHeader.className = 'calendar-days-header';
-
           daysOfWeek.forEach(day => {
             const dayDiv = document.createElement('div');
             dayDiv.className = 'calendar-day';
             dayDiv.textContent = day;
             grid.appendChild(dayDiv);
           });
-
-          calendar.appendChild(daysHeader);
-
-
           
           const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
           const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
@@ -371,9 +389,17 @@
             dayDiv.textContent = day;
             
             const date = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
-            dayDiv.dataset.date = date.toISOString().split('T')[0];
+            const dateString = date.toISOString().split('T')[0];
+            dayDiv.dataset.date = dateString;
             
-            if (this.selectedDate === dayDiv.dataset.date) {
+            // Add today highlight
+            if (dateString === this.today) {
+              dayDiv.classList.add('today');
+              dayDiv.style.backgroundColor = '#90EE90'; // Light green background
+              dayDiv.style.fontWeight = 'bold';
+            }
+            
+            if (this.selectedDate === dateString) {
               dayDiv.classList.add('selected');
             }
             
@@ -484,11 +510,6 @@
         calendar.querySelector('.calendar-grid').innerHTML = 
           generateCalendarDays(date.getFullYear(), date.getMonth());
       }
-
-
-/* Left off here breaking into individual files */
-
-
 
 
       function showDialog(htmlContent, callback) {
@@ -638,7 +659,7 @@
                   <p>Do you want to:</p>
                   <div class="buttons">
                     <button class="confirm">Save Anyway</button>
-                    <button class="cancel" autofocus>Cancel Save</button>
+                    <button class="cancel" autofocus>Cancel Save (CTRL-R is recommended to refresh the task list)</button>
                   </div>
                 `;
                 showDialog(htmlContent, (confirmed) => {
@@ -817,9 +838,7 @@
                 }
               });
             };
-      
-      // Rest of the existing code...
-            
+                  
             // Single function to handle file selection
             const handleFileSelection = (fileId) => {
               const loadingContent = `
@@ -964,43 +983,66 @@
       }
 
       function handleKeyDown(event) {
-        // Ignore hotkeys if search box is focused or dialog box is open
-        if (document.activeElement === document.getElementById('searchBox') || document.getElementById('dialogContainer').innerHTML !== '') {
+        if (currentSortState !== 'file' && 
+            ((event.ctrlKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) ||
+            (event.ctrlKey && (event.key.toLowerCase() === 'x' || event.key.toLowerCase() === 'v')))) {
           return;
         }
+        
+        if (document.activeElement === document.getElementById('searchBox') || 
+            document.getElementById('dialogContainer').innerHTML !== '') {
+          return;
+        }
+
         const taskList = document.getElementById('taskList');
         const tasks = taskList.getElementsByClassName('task');
+        
         if (lastSelectedIndex === -1) return;
-        if (event.altKey && event.key.toLowerCase() === 'x') {
+
+        if (event.ctrlKey && event.key.toLowerCase() === 'x') {
           event.preventDefault();
+          // Get all selected task indices in reverse order (to remove from end to start)
           const originalIndices = getOriginalIndices().sort((a, b) => b - a);
-          cutTasks = originalIndices.map(index => {
-            const task = allTasks[index];
-            return { ...task };
+          
+          // Clear previous cut tasks
+          cutTasks = [];
+          
+          // Store the tasks that are being cut in original order
+          originalIndices.reverse().forEach(index => {
+            cutTasks.push({...allTasks[index]});
           });
-          // Remove tasks from original list
+          
+          // Remove the cut tasks from allTasks (still in reverse order for proper splicing)
           originalIndices.forEach(index => {
             allTasks.splice(index, 1);
           });
-          updateValidPriorities();
+          
+          // Update display
           applyFilters();
-        } else if (event.altKey && event.key.toLowerCase() === 'i') {
+        }
+
+        if (event.ctrlKey && event.key.toLowerCase() === 'v') {
           event.preventDefault();
+          
           if (cutTasks.length > 0) {
-            const selectedIndex = lastSelectedIndex !== -1 ? 
-              filteredTasks[lastSelectedIndex].originalIndex : 0;
+            // Get the current selected task's original index
+            let insertIndex;
+            if (lastSelectedIndex >= 0 && lastSelectedIndex < filteredTasks.length) {
+              insertIndex = filteredTasks[lastSelectedIndex].originalIndex; // Insert before current selection
+            } else {
+              insertIndex = allTasks.length; // If no selection, append to end
+            }
             
-            // Insert cut tasks at the selected position
-            cutTasks.reverse().forEach(task => {
-              allTasks.splice(selectedIndex, 0, task);
+            // Insert all cut tasks at the insertion point in original order
+            cutTasks.forEach((task) => {
+              allTasks.splice(insertIndex++, 0, {...task});
             });
             
-            // Clear cut tasks buffer
-            cutTasks = [];
-            updateValidPriorities();
+            // Reapply filters to update the display
             applyFilters();
           }
-        }
+        }        
+
         if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
           const taskList = document.getElementById('taskList');
           const tasks = taskList.getElementsByClassName('task');
@@ -1095,7 +1137,7 @@
             const originalIndex = parseInt(selectedTask.dataset.originalIndex);
             editTask(originalIndex);
           }
-        } else if (event.ctrlKey && event.key === 'a') {
+        } else if (event.ctrlKey && event.key.toLowerCase() ==='a') {
           event.preventDefault();
           const tasks = document.getElementsByClassName('task');
           Array.from(tasks).forEach((task, index) => {
@@ -1103,15 +1145,15 @@
             selectedTasks.add(index);
           });
           lastSelectedIndex = tasks.length - 1;
-        } else if (event.key === 'c' && event.ctrlKey) {
+        } else if (event.key.toLowerCase() ==='c' && event.ctrlKey) {
           copySelectedTasks();
-        } else if (event.key === 'c' && !event.ctrlKey) {
+        } else if (event.key.toLowerCase() ==='c' && !event.ctrlKey) {
           cycleCompleteState();
         } else if (event.ctrlKey && event.altKey && event.key >= '1' && event.key <= '9') {
           saveFilterSet(event.key);
         } else if (event.key >= '1' && event.key <= '9') {
           loadFilterSet(event.key);
-        } else if (event.key === 'x') {
+        } else if (!event.ctrlKey && event.key.toLowerCase() ==='x') {
           const selectedTaskObjects = getOriginalIndices().map(i => allTasks[i]);
           toggleCompletion(selectedTaskObjects);
           applyFilters();
@@ -1123,7 +1165,7 @@
         } else if (event.key === 'Delete') {
           event.preventDefault();
           deleteTask(filteredTasks[lastSelectedIndex].originalIndex);
-        } else if (!event.ctrlKey && event.key === 'f') {
+        } else if (!event.ctrlKey && event.key.toLowerCase() ==='f') {
           event.preventDefault();
           document.getElementById('searchBox').focus();
           return;
@@ -1132,28 +1174,25 @@
           showHelpWindow();
         } else if (event.key === '(') {
           addNewTask();
-        } else if (event.key === 'q') {
+        } else if (event.key.toLowerCase() === 'q') {
           event.preventDefault();
           cyclePriorityState();
-        } else if (!event.ctrlKey && event.key === 'r') {
-          event.preventDefault();
-          sortTasksByPriority();
-        } else if (event.key === 's') {
+        } else if (event.key.toLowerCase() ==='s') {
           event.preventDefault();
           setDateForSelectedTasks();
-        } else if (event.key === 't') {
+        } else if (event.key.toLowerCase() ==='t') {
           event.preventDefault();
-          sortTasksByDueDate();
-        } else if (event.key === 'p') {
+          cycleSortState();
+        } else if (event.key.toLowerCase() ==='p') {
           event.preventDefault();
           setPriorityForSelectedTasks();
-        } else if (event.key === 'd') {
+        } else if (event.key.toLowerCase() ==='d') {
           event.preventDefault();
           postponeSelectedTasks();
-        } else if (event.key === 'u') {
+        } else if (event.key.toLowerCase() ==='u') {
           event.preventDefault();
           cycleDueState();
-        } else if (event.key === '0') {
+        } else if (event.key.toLowerCase() ==='0') {
           event.preventDefault();
           clearFilters();
         }
@@ -1171,7 +1210,6 @@
             showDialog(htmlContent, () => {});
           })
           .withFailureHandler(function(error) {
-            console.error('Failed to load help content:', error);
             alert('Failed to load help content. Please try again.');
           })
           .getHelpContent();

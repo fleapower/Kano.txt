@@ -1,3 +1,5 @@
+// Public Release Alpha 0.04
+
 function doGet() {
   try {
     return HtmlService.createTemplateFromFile('index')

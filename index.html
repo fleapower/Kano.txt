@@ -1,11 +1,267 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <style>
+        
+      body { font-family: Arial, sans-serif; }
+      .task { cursor: pointer; padding: 5px; border-bottom: 1px solid #ccc; }
+      .selected { background-color: #80EF80; }
+
+      .header-bar {position: sticky; top: 0; background: white; padding: 10px; border-bottom: 1px solid #ccc;}
+      .filter-bar {background: white; padding: 5px;}
+      .context-bar {background: white; padding: 5px;}
+
+      .button {
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 8px;
+      }
+
+      .button:active {
+        transform: translateY(2px);
+        background-color: green;
+      }
+
+      .context-button {
+        font-size: 14px;
+        font-weight: bold;
+        border-radius: 8px;
+        margin: 2px;
+      }
+
+      .context-button:focus {
+        border: 2px solid white;
+        outline: 2px solid green;
+      }
+
+      .context-button.selected {
+        background-color: green;
+        color: white; 
+      }
+      .section {
+        margin-bottom: 24px;
+      }
+      .section-title {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 12px;
+        font-size: 16px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 4px;
+      }
+      .shortcut-row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .priority-a {
+        color: red;
+      }
+      .priority-b {
+        color: orange;
+      }
+      .priority-c {
+        color: green;
+      }
+      .priority-d {
+        color: blue;
+      }
+
+      .context {
+        font-family: monospace;
+        color: #666;
+        background-color: #f0f0f0;
+        padding: 0 4px;
+        border-radius: 3px;
+      }
+      .complete-task {
+        text-decoration: line-through;
+      }
+      .overdue-task {
+        color: red;
+      }
+      .task {
+        -webkit-user-select: none;  /* Safari */
+        -ms-user-select: none;      /* IE 10 and IE 11 */
+        user-select: none;          /* Standard syntax */
+      }
+
+
+      .sidebar-dialog {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%) scale(0.95);
+        width: 90%;
+        max-width: 900px;
+        height: auto;
+        max-height: 90vh;
+        background: white;
+        padding: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        border-radius: 8px;
+        transition: transform 0.3s ease;
+      }
+
+      .sidebar-dialog.active {
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      .sidebar-dialog input {
+        width: 100%;
+        padding: 8px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+      }
+
+      .sidebar-dialog textarea {
+        width: 100%;
+        padding: 8px;
+        margin: 10px 0;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-family: Arial, sans-serif;
+        font-size: 16px;
+        height: 150px;
+        min-height: 150px;
+        resize: vertical;
+      }
+
+      .sidebar-dialog .buttons {
+        bottom: 20px;
+        width: calc(100% - 40px);
+      }
+
+      .sidebar-dialog button {
+        padding: 8px 16px;
+        margin: 5px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .sidebar-dialog .confirm {
+        background-color: gray;
+        color: white;
+      }
+
+      .sidebar-dialog .cancel {
+        background-color: gray;
+        color: white;
+      }
+
+      .confirm {
+        background-color: #4CAF50;
+        color: white;
+        padding: 8px 24px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.2s;
+      }
+
+      .confirm:hover {
+        background-color: #45a049;
+      }
+
+      .calendar {
+        width: 280px;
+        border: 1px solid #ccc;
+        padding: 8px;
+        margin: 10px 0;
+      }
+
+      .calendar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 2px;
+      }
+
+      .weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+
+      .week {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+      }
+
+      .day {
+        padding: 4px;
+        text-align: center;
+        cursor: pointer;
+      }
+
+      .day:hover {
+        background-color: #e0e0e0;
+      }
+
+      .empty {
+        padding: 4px;
+      }
+
+      .file-date {
+        color: #666;
+      }
+
+      .file-browser {
+        max-height: 300px;
+        overflow-y: auto;
+        margin: 10px 0;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+      }
+
+      .file-item {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .file-item:last-child {
+        border-bottom: none;
+      }
+
+      .file-item:hover {
+        background-color: #f5f5f5;
+      }
+
+      .file-item.selected {
+        background-color: #e3f2fd;
+      }
+
+      .file-name {
+        font-weight: bold;
+      }
+
+      .file-info {
+        font-size: 0.9em;
+        color: #666;
+      }
+    </style>
     <base target="_top">
-    <?!= include('styles'); ?>
   </head>
   <body tabindex="0">
-    <h1>GooDo.txt
+    <h1>Kano.txt
     <button class="button" onclick="loadNewFile()">Load ToDo.txt file</button>
     </h1>
     <div id="dialogContainer"></div>
@@ -51,10 +307,472 @@
 
       const saveTimeout = 3000; // You can increase this if you are getting an error that too many scripts are running on your account.  This is in milliseconds.
 
-      // functions which need to be loaded up front are in index.html, others are in the following files //
-      <?!= include('displayFunctions.html') ?>
-      <?!= include('fileFunctions.html') ?>
-      <?!= include('taskFunctions.html') ?>
+      function getNextDayOfWeekDate(dayOfWeek) {
+        const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const today = new Date();
+        const todayDayOfWeek = today.getDay();
+        const targetDayOfWeek = daysOfWeek.findIndex(day => day.toLowerCase() === dayOfWeek.toLowerCase());
+        const daysUntilNext = (targetDayOfWeek + 7 - todayDayOfWeek) % 7 || 7;
+        today.setDate(today.getDate() + daysUntilNext);
+        return today.toLocaleDateString('en-CA');
+      }
+
+      // Function to replace due date keywords with actual dates in user's local time zone
+      function replaceDueDateKeywords(task) {
+        return task.replace(/due:today/gi, `due:${getTodayDate()}`)
+                  .replace(/due:tomorrow/gi, `due:${getTomorrowDate()}`)
+                  .replace(/due:(sunday|monday|tuesday|wednesday|thursday|friday|saturday)/gi, (match, day) => `due:${getNextDayOfWeekDate(day)}`);
+      }
+
+      function toggleCompletion(selectedTasks) {
+        const todayDate = getTodayDate();
+        selectedTasks.forEach(task => {
+          if (task.Task.startsWith('x ')) {
+            task.Task = task.Task.replace(/^x \d{4}-\d{2}-\d{2} /, '');
+          } else {
+            task.Task = `x ${todayDate} ${task.Task}`;
+          }
+        });
+      }
+
+      function editTask(index) {
+        const task = allTasks[index];
+        const htmlContent = `
+          <h2>Edit Task</h2>
+          <textarea autofocus>${task.Task}</textarea>
+          <div id="calendar"></div>
+          <div class="buttons">
+            <button class="confirm">Save</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        
+        showDialog(htmlContent, (newTask) => {
+          if (newTask !== null) {
+            allTasks[index].Task = replaceDueDateKeywords(newTask);
+            updateValidPriorities(); // Add this line
+            applyFilters();
+          }
+        });
+
+        // Position cursor at end
+        setTimeout(() => {
+          const textarea = document.querySelector('.sidebar-dialog textarea');
+          textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+        }, 50);
+      }
+
+      function addNewTask() {
+        const htmlContent = `
+          <h2>New Task</h2>
+          <textarea placeholder="Enter the new task" autofocus>(</textarea>
+          <div id="calendar"></div>
+          <div class="buttons">
+            <button class="confirm">Add</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        
+        showDialog(htmlContent, (newTask) => {
+          if (newTask) {
+            allTasks.unshift({ TaskID: allTasks.length, Task: replaceDueDateKeywords(newTask) });
+            updateValidPriorities(); // Add this line
+            applyFilters();
+          }
+        });
+
+        // Position cursor after (
+        setTimeout(() => {
+          const textarea = document.querySelector('.sidebar-dialog textarea');
+          textarea.selectionStart = textarea.selectionEnd = 1;
+        }, 50);
+      }
+
+      function setDateForSelectedTasks() {
+        const htmlContent = `
+          <h2>Set Due Date</h2>
+          <input type="text" placeholder="Enter the new date (YYYY-MM-DD, today, tomorrow, or day of the week)">
+          <div id="calendar"></div>
+          <div class="buttons">
+            <button class="confirm">Set Date</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        
+        showDialog(htmlContent, (newDate) => {
+          if (newDate) {
+            const originalIndices = getOriginalIndices();
+            const formattedDate = replaceDueDateKeywords(`due:${newDate}`).split('due:')[1];
+            originalIndices.forEach(index => {
+              const task = allTasks[index];
+              if (task.Task.includes('due:')) {
+                allTasks[index].Task = task.Task.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${formattedDate}`);
+              } else {
+                allTasks[index].Task = `${task.Task} due:${formattedDate}`;
+              }
+            });
+            applyFilters();
+          }
+        });
+
+        // Initialize calendar after dialog content is rendered
+        const calendarContainer = document.querySelector('#calendar');
+        if (calendarContainer) {
+          setTimeout(() => {
+            const calendar = new Calendar(calendarContainer, {
+              onChange: (date) => {
+                const input = document.querySelector('.sidebar-dialog input');
+                if (input) {
+                  input.value = date;
+                }
+              }
+            });
+          }, 0);
+        }
+      }
+
+      function deleteTask(index) {
+        const task = allTasks[index];
+        const htmlContent = `
+          <h2>Delete Task(s)</h2>
+          <input type=hidden value="delete">
+          <p>Are you sure?</p>
+          <div class="buttons">
+            <button class="confirm" data-confirmed="true">Delete</button>
+            <button class="cancel" data-confirmed="false">Cancel</button>
+          </div>
+        `;
+        showDialog(htmlContent, (confirmed) => {
+          if (confirmed) {
+            const originalIndices = getOriginalIndices().sort((a, b) => b - a);
+            originalIndices.forEach(idx => {
+              allTasks.splice(idx, 1);
+            });
+            updateValidPriorities(); // Add this line
+            applyFilters();
+          }
+        });
+      }
+
+      function changePriority(tasks, increase) {
+        tasks.forEach(task => {
+          const currentPriority = extractPriority(task.Task);
+          if (!currentPriority) return;
+          
+          const currentIndex = validPriorities.indexOf(currentPriority);
+          if (currentIndex === -1) return;
+          
+          const newIndex = increase ? 
+            Math.max(0, currentIndex - 1) : 
+            Math.min(validPriorities.length - 1, currentIndex + 1);
+          
+          task.Task = task.Task.replace(/\([A-I]\)/, `(${validPriorities[newIndex]})`);
+        });
+      }
+
+      function setPriorityForSelectedTasks() {
+        const htmlContent = `
+          <h2>Set Priority</h2>
+          <input type="text" 
+                placeholder="(A, B, C...)" 
+                maxlength="1" 
+                pattern="[A-Za-z]"
+                onkeydown="return /[a-zA-Z]/i.test(event.key) || event.key === 'Backspace' || event.key === 'Delete' || event.key === 'ArrowLeft' || event.key === 'ArrowRight' || event.key === 'Tab'"
+                style="text-transform: uppercase;">
+          <div class="buttons">
+            <button class="confirm">Set Priority</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showDialog(htmlContent, (newPriority) => {
+          if (newPriority && /^[A-Za-z]$/.test(newPriority)) {
+            const originalIndices = getOriginalIndices();
+            originalIndices.forEach(index => {
+              const currentPriority = extractPriority(allTasks[index].Task);
+              if (currentPriority) {
+                allTasks[index].Task = allTasks[index].Task.replace(/\([A-D]\)/, `(${newPriority.toUpperCase()})`);
+              } else {
+                allTasks[index].Task = `(${newPriority.toUpperCase()}) ${allTasks[index].Task}`;
+              }
+            });
+            applyFilters();
+          }
+        });
+      }
+
+      // Function to postpone selected tasks
+      function postponeSelectedTasks() {
+        const htmlContent = `
+        <h2>Delay</h2>
+        <input type="number" placeholder="Enter the number of days to delay task">
+        <div class="buttons">
+            <button class="confirm">Delay</button>
+            <button class="cancel">Cancel</button>
+          </div>
+        `;
+        showDialog(htmlContent, (days) => {
+          if (days) {
+			      const originalIndices = getOriginalIndices();
+            originalIndices.forEach(index => {
+              const task = allTasks[index];
+              const dueDateMatch = task.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
+              if (dueDateMatch) {
+                const dueDate = new Date(dueDateMatch[1]);
+                dueDate.setDate(dueDate.getDate() + parseInt(days));
+                const newDueDate = dueDate.toISOString().split('T')[0];
+                allTasks[index].Task = task.Task.replace(/due:\d{4}-\d{2}-\d{2}/, `due:${newDueDate}`);
+              }
+            });
+            applyFilters();
+          }
+        });
+      }
+
+      function saveFilterSet(number) {
+        const filterSet = {
+          dueState: dueState,
+          priorityState: priorityState,
+          completeState: completeState,
+          searchQuery: document.getElementById('searchBox').value,
+          activeContexts: Array.from(activeContexts)
+        };
+        allFilterSets[number] = filterSet;  // Save to memory
+        
+        // Save all filter sets to a single file
+        google.script.run.saveAllFilterSets(allFilterSets);
+        
+        const htmlContent = `
+          <h2>Filter set saved.</h2>
+          <input type="hidden" value="copy">
+          <div class="buttons">
+            <button class="confirm" autofocus>OK</button>
+            <button class="cancel" style="display: none;">Cancel</button>
+          </div>
+        `;
+        showDialog(htmlContent, () => {});
+      }
+
+      function loadFilterSet(number) {
+        const filterSet = allFilterSets[number];
+        if (filterSet) {
+          applyLoadedFilterSet(filterSet);
+        }
+      }
+      
+      function cyclePriorityState() {
+        updateValidPriorities(); // Update priorities before cycling
+        const states = ["All Pri", ...validPriorities.map(p => `(${p})`)];
+        const currentIndex = states.indexOf(priorityState);
+        priorityState = states[(currentIndex + 1) % states.length];
+        document.getElementById('priorityButton').textContent = priorityState;
+        applyFilters();
+      }
+
+      function cycleCompleteState() {
+        const states = ["All States", "Pending", "Complete"];  // Swapped Pending and Complete
+        completeState = states[(states.indexOf(completeState) + 1) % 3];
+        document.getElementById('completeButton').textContent = completeState;
+        applyFilters();
+      }
+
+      function cycleDueState() {
+        const states = ["All Dates", "Due Today", "Due Tomorrow"];
+        dueState = states[(states.indexOf(dueState) + 1) % 3];
+        document.getElementById('dueButton').textContent = dueState;
+        applyFilters();
+      }
+
+      function updateValidPriorities() {
+        const priorities = new Set();
+        allTasks.forEach(task => {
+          const match = task.Task.match(/\(([A-Z])\)/);
+          if (match) priorities.add(match[1]);
+        });
+        validPriorities = Array.from(priorities).sort();
+        
+        // Update the priority button options
+        const priorityButton = document.getElementById('priorityButton');
+        if (priorityButton) {
+          const currentState = priorityButton.textContent;
+          if (!["All Pri", ...validPriorities.map(p => `(${p})`)].includes(currentState)) {
+            priorityButton.textContent = "All Pri";
+            priorityState = "All Pri";
+          }
+        }
+      }
+
+      function toggleContextFilter(context) {
+        const button = document.querySelector(`.context-button[data-context="${context}"]`);
+        if (activeContexts.has(context)) {
+          activeContexts.delete(context);
+          button.classList.remove('selected');
+        } else {
+          activeContexts.add(context);
+          button.classList.add('selected');
+        }
+        applyFilters();
+      }
+
+      function applySearchFilter(taskText, searchTerms) {
+        if (!searchTerms.length) return true;
+        
+        const lowerTaskText = taskText.toLowerCase();
+        
+        // Handle exclusions first
+        const excludedTerms = searchTerms
+          .filter(term => term.startsWith('-'))
+          .map(term => term.slice(1).toLowerCase());
+        
+        if (excludedTerms.some(term => lowerTaskText.includes(term))) {
+          return false;
+        }
+        
+        // Remove exclusions from further processing
+        const remainingTerms = searchTerms.filter(term => !term.startsWith('-'));
+        
+        // If no terms left after exclusions, return true
+        if (!remainingTerms.length) return true;
+        
+        // Separate AND groups and regular terms
+        const andGroups = [];
+        const regularTerms = [];
+        
+        let currentGroup = [];
+        let inGroup = false;
+        
+        remainingTerms.forEach(term => {
+          if (term.startsWith('[')) {
+            inGroup = true;
+            // Remove '[' and add the rest of the term
+            currentGroup.push(term.slice(1).toLowerCase());
+          } else if (term.endsWith(']')) {
+            inGroup = false;
+            // Remove ']' and add the rest of the term
+            currentGroup.push(term.slice(0, -1).toLowerCase());
+            andGroups.push([...currentGroup]);
+            currentGroup = [];
+          } else if (inGroup) {
+            currentGroup.push(term.toLowerCase());
+          } else {
+            regularTerms.push(term.toLowerCase());
+          }
+        });
+        
+        // A match occurs if either:
+        // 1. Any of the regular terms match OR
+        // 2. Any of the AND groups have all their terms match
+        return regularTerms.some(term => lowerTaskText.includes(term)) ||
+              andGroups.some(group => group.every(term => lowerTaskText.includes(term)));
+      }
+
+      function cycleSortState() {
+        const sortButton = document.getElementById('sortButton');
+        
+        switch (currentSortState) {
+          case 'file':
+            sortTasksByDueDate();
+            sortButton.textContent = 'Sort: Date';
+            currentSortState='date';
+            displaySortedTasks();
+            break;
+          case 'date':
+            sortTasksByPriority();
+            sortButton.textContent = 'Sort: Priority';
+            currentSortState='priority';
+            displaySortedTasks();
+            break;
+          case 'priority':
+            currentSortState = 'file';
+            sortButton.textContent = 'Sort: File';
+            currentSortState='file';
+            applyFilters();
+            break;
+        }
+      }
+
+      function sortTasksByDueDate() {
+        
+        // Create a new sorted array instead of modifying allTasks
+        filteredTasks.sort((a, b) => {
+          const aDate = a.task.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
+          const bDate = b.task.Task.match(/due:(\d{4}-\d{2}-\d{2})/);
+          return (aDate ? new Date(aDate[1]) : new Date(0)) - (bDate ? new Date(bDate[1]) : new Date(0));
+        });
+        
+        // Refresh the display without saving
+        const taskList = document.getElementById('taskList');
+        taskList.innerHTML = '';
+      }
+
+      function sortTasksByPriority() {
+        
+        // Create a new sorted array instead of modifying allTasks
+        filteredTasks.sort((a, b) => {
+          const prioA = extractPriority(a.task.Task);
+          const prioB = extractPriority(b.task.Task);
+          
+          if (!prioA && !prioB) return 0;
+          if (!prioA) return 1;
+          if (!prioB) return -1;
+          
+          return prioA.localeCompare(prioB);
+        });
+        
+        // Refresh the display without saving
+        const taskList = document.getElementById('taskList');
+        taskList.innerHTML = '';
+      }
+
+      function copySelectedTasks() {
+        const taskList = document.getElementById('taskList');
+        const tasks = taskList.getElementsByClassName('task');
+        const selectedText = Array.from(selectedTasks)
+          .sort((a, b) => a - b)
+          .map(index => tasks[index].textContent)
+          .join('\n');
+		    navigator.clipboard.writeText(selectedText);
+      }
+
+      function applyLoadedFilterSet(filterSet) {
+        clearFilters();
+        dueState = filterSet.dueState || "All Dates";
+        priorityState = filterSet.priorityState || "All Pri";
+        completeState = filterSet.completeState || "All States";
+        activeContexts = new Set(filterSet.activeContexts);
+        
+        document.getElementById('dueButton').textContent = dueState;
+        document.getElementById('priorityButton').textContent = priorityState;
+        document.getElementById('completeButton').textContent = completeState;
+        document.getElementById('searchBox').value = filterSet.searchQuery;
+        
+        // Update context button states to match loaded filter
+        const contextButtons = document.getElementsByClassName('context-button');
+        Array.from(contextButtons).forEach(button => {
+          if (activeContexts.has(button.dataset.context)) {
+            button.classList.add('selected');
+          }
+        });
+        
+        applyFilters();
+      }
+
+      function clearFilters() {
+        dueState = "All Dates";
+        priorityState = "All Pri";
+        completeState = "All States";
+        currentSortState = "file";
+        document.getElementById('dueButton').textContent = "All Dates";
+        document.getElementById('priorityButton').textContent = "All Pri";
+        document.getElementById('completeButton').textContent = "All States";
+        document.getElementById('sortButton').textContent = "Sort: File";
+        document.getElementById('searchBox').value = '';
+        const contextButtons = document.getElementsByClassName('context-button');
+        Array.from(contextButtons).forEach(button => {
+          button.classList.remove('selected');
+        });
+        activeContexts.clear();
+        applyFilters();
+      }
 
       function loadTasks() {
         google.script.run

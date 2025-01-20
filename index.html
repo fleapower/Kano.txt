@@ -280,6 +280,7 @@
           searchBox.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
               searchBox.value = '';
+              searchBox.blur();
               applyFilters(); // Optional: Call applyFilters to clear filters when the search box is cleared
             }
           });

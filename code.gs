@@ -1,16 +1,17 @@
-// Public Release Alpha 0.04
+// Public Release Alpha 0.05
 
 function doGet() {
   try {
     return HtmlService.createTemplateFromFile('index')
       .evaluate()
-      .setFaviconUrl('https://drive.google.com/uc?export=download&id=1L6RQug6xKYBAE36KeUvNXJ_f6qMasSbI&format=png');
+      .setFaviconUrl('https://drive.google.com/uc?export=download&id=1f_VcmveEWFC6-UK6BJVYdVATOkaFzg__&format=png')
+      .setTitle('Kano.txt');
   } catch (e) {
     return HtmlService.createHtmlOutput(`
       <h2>Error</h2>
       <p>${e.message}</p>
       <button onclick="window.top.location.reload()">Retry</button>
-    `);
+    `)
   }
 }
 

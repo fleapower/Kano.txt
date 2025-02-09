@@ -870,7 +870,7 @@
             .replace(/([+]\S+)/g, '<span class="context">$1</span>')
             .replace(/\b(r:\S+)\b/g, '<span class="context">$1</span>')
             .replace(/\b(last:\S+)\b/g, '<span class="context">$1</span>')
-            .replace(/\b(\s@\S+)\b/g, '<span class="context">$1</span>');
+            .replace(/(\s@\S+)\b/g, '<span class="context">$1</span>');
 
           const dueDate = taskText.substring(taskText.indexOf('due:') + 4, taskText.indexOf('due:') + 14);
           const today = getTodayDate();
@@ -1378,7 +1378,7 @@
                   <p>Do you want to:</p>
                   <div class="buttons">
                     <button class="confirm">Save Anyway</button>
-                    <button class="cancel" autofocus>Cancel Save (CTRL-R is recommended to refresh the task list)</button>
+                    <button class="cancel" autofocus>Cancel Save (tasks will be reloaded)</button>
                   </div>
                 `;
                 showDialog(htmlContent, (confirmed) => {

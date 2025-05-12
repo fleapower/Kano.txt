@@ -263,6 +263,7 @@
   <body tabindex="0">
     <h1><font face="Courier New">Kano.txt</font>
     <button class="button" onclick="loadNewFile()">Load ToDo.txt file</button>
+    <button class="button" onclick="loadTasks()">Reload Tasks</button>
     </h1>
     <div id="dialogContainer"></div>
     <div id="headerContainer" class="header-bar">
@@ -273,7 +274,6 @@
         <button class="button" id="sortButton" onclick="cycleSortState()">Sort: File</button>
         <button class="button" onclick="clearFilters()">Clear Filters</button>
         <input type="text" id="searchBox" placeholder="Find..." oninput="applyFilters()">
-
         <script>
           const searchBox = document.getElementById('searchBox');
           
@@ -512,6 +512,7 @@
           </div>
         `;
         showDialog(htmlContent, (days) => {
+
           if (days) {
 			      const originalIndices = getOriginalIndices();
             originalIndices.forEach(index => {
@@ -781,8 +782,9 @@
             lastModifiedTime = result.lastModified;
             lastSavedTime = result.lastModified;
             displayTasks(result.tasks);
+            loadFilterSet('1');  // This will trigger applyFilters()
           })
-          .getTasksAndModifiedTime();
+        .getTasksAndModifiedTime();
       }
 
       function displayTasks(tasks) {
@@ -1908,12 +1910,15 @@
         } else if (event.key.toLowerCase() ==='d') {
           event.preventDefault();
           postponeSelectedTasks();
-        } else if (event.key.toLowerCase() ==='u') {
+        } else if (event.key.toLowerCase() ==='w') {
           event.preventDefault();
           cycleDueState();
         } else if (event.key.toLowerCase() ==='0') {
           event.preventDefault();
           clearFilters();
+        } else if (event.key.toLowerCase() ==='.') {
+          event.preventDefault();
+          loadTasks();
         }
       }
 
@@ -1936,9 +1941,6 @@
 
       // Start listening for keyboard input
       listenForKeyboardInput();
-
-	    // Add this line to focus the page on load
-	    window.onload = () => document.body.focus();
 
       document.addEventListener('DOMContentLoaded', function() {
         google.script.run
@@ -1970,6 +1972,11 @@
 	  
 	    // Add this line to focus the page on load
 	    window.onload = () => document.body.focus();
+
+      // This listens for when the page is focused to load the latest version of the task list to try to prevent conflicts.
+      window.addEventListener('focus', function() {
+        loadTasks();
+      });
 
     </script>
   </body>

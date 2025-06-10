@@ -261,9 +261,15 @@
     <base target="_top">
   </head>
   <body tabindex="0">
-    <h1><font face="Courier New">Kano.txt</font>
-    <button class="button" onclick="loadNewFile()">Load ToDo.txt file</button>
-    <button class="button" onclick="loadTasks()">Reload Tasks</button>
+    <div style="display: flex; justify-content: space-between;">
+      <div>
+        <h1><font face="Courier New">Kano.txt</font>
+        <button class="button" onclick="loadNewFile()">Load ToDo.txt file</button>
+        <button class="button" onclick="loadTasks()">Reload Tasks</button>
+      </div>
+      <div><h6>? for Help
+      </div>
+    </div>
     </h1>
     <div id="dialogContainer"></div>
     <div id="headerContainer" class="header-bar">
@@ -1974,9 +1980,9 @@
 	    window.onload = () => document.body.focus();
 
       // This listens for when the page is focused to load the latest version of the task list to try to prevent conflicts.
-      window.addEventListener('focus', function() {
-        loadTasks();
-      });
+      // window.addEventListener('focus', function() {
+      //  loadTasks();
+      // });
 
     </script>
   </body>
